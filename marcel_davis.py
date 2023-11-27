@@ -151,6 +151,7 @@ def replace_paranthesis(stri):
 
 @bot.message_handler(commands=['mensa'])
 async def mensa(message):
+    print("mensa was called")
     with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
     await bot.send_message(message.chat.id, menu, parse_mode='Markdown')
@@ -158,6 +159,7 @@ async def mensa(message):
 
 @bot.message_handler(commands=['mensa_week'])
 async def mensa_week(message):
+    print("mensaweek was called")
     with open(HSMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
     menu_days = menu.split("*")
@@ -172,6 +174,7 @@ async def mensa_week(message):
 
 @bot.message_handler(commands=['unimensa_week'])
 async def uni_mensa(message):
+    print("unimensa was called")
     with open(UNIMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
 
@@ -188,10 +191,12 @@ async def uni_mensa(message):
 
 async def bot_poll():
     while True:
+        print("polling msgs")
         await bot.polling()
         asyncio.sleep(1.0)
 
 async def run_scheduler():
+    print("running scheduler")
     sched = AsyncIOScheduler()
     sched.configure(timezone='Europe/Rome')
     sched.add_job(
