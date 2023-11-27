@@ -227,10 +227,9 @@ async def set_options():
 
 
 async def main():
-    print("setting options")
-    await set_options()
-    print("runnign background tasks")
-    await asyncio.gather(bot_poll(), run_scheduler())
+   
+    print("running background tasks")
+    await asyncio.gather(set_options(), bot_poll(), run_scheduler())
 
 
 if __name__ == '__main__':
