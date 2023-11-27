@@ -227,12 +227,18 @@ async def set_options():
 
 
 async def main():
+    print("setting options")
     await set_options()
+    print("runnign background tasks")
     await asyncio.gather(bot_poll(), run_scheduler())
 
 
 if __name__ == '__main__':
+    print("starting bot")
+    print("check if file not exist")
     if not os.path.exists(HSMA_FILENAME):
+        print("file does not exist. downloading.")
         cache_all_menus()
+    print("running mainloop")
     asyncio.run(main())
     
