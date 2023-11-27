@@ -1,26 +1,110 @@
-from threading import main_thread
-from requests.api import get
-import telebot
+#!/usr/bin/env python3
 import requests
 import bs4
 import re
 from bs4 import BeautifulSoup
-from telebot.types import Message
-
-
 from tgbot_config import API_KEY
-bot = telebot.TeleBot(API_KEY)
+from telebot.async_telebot import AsyncTeleBot
+import asyncio
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-bot.set_my_commands([
-    telebot.types.BotCommand("/help","Hilfe"),
-    telebot.types.BotCommand("/mensa","mensa heute"),
-    telebot.types.BotCommand("/mensa_week","mensamenu woche"),
-    telebot.types.BotCommand("/bp","Blockzeit"),
-    telebot.types.BotCommand("/unimensa_week","unimensamenu der woche"),
-]
-)
+TIMEOUT = 5
+HSMA_WEEK_FILENAME = "hsma_week_menu.txt"
+HSMA_FILENAME = "hsma_menu.txt"
+UNIMA_WEEK_FILENAME = "unima_week_menu.txt"
 
-@bot.message_handler(commands=["start","help"])
+bot = AsyncTeleBot(API_KEY)
+
+# await bot.set_my_commands([
+#     telebot.types.BotCommand("/help", "Hilfe"),
+#     telebot.types.BotCommand("/mensa", "mensa heute"),
+#     telebot.types.BotCommand("/mensa_week", "mensamenu woche"),
+#     telebot.types.BotCommand("/bp", "Blockzeit"),
+#     telebot.types.BotCommand("/unimensa_week", "unimensamenu der woche"),
+# ]
+# )
+
+
+
+
+def parse_week(match):
+    data = [ele.text for ele in match]
+    data = [ele.replace("\t", '').replace("\n\n\n", "\n\n") for ele in data]
+    data = [ele.replace("Montag", "*Montag*") for ele in data]
+    data = [ele.replace("Dienstag", "*Dienstag*") for ele in data]
+    data = [ele.replace("Mittwoch", "*Mittwoch*") for ele in data]
+    data = [ele.replace("Donnerstag", "*Donnerstag*") for ele in data]
+    data = [ele.replace("Freitag", "*Freitag*") for ele in data]
+    data = [ele.replace("`", "'") for ele in data]
+    return data
+
+
+async def download_hsma():
+    URL = "https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim.html"
+
+    with requests.get(URL, verify=False, timeout=5) as url:
+        soup = BeautifulSoup(url.content, features="lxml")
+    match = soup.find(class_='speiseplan-table')
+
+    menu = ""
+    for row in match:
+        if not isinstance(row, bs4.element.NavigableString):
+            cells = row.find_all("td")
+            del cells[-2]
+            for cell in cells:
+                # print(cell)
+                stri = cell.get_text()
+                result = re.sub(r'[\t\n]+', '', stri)
+                result = re.sub(r'\€Stück|€Portion|€pro100g', '€', result)
+                menu += result + "\n"
+            menu += "\n"
+    if not menu:
+        menu = "Hochschulmensa hat zu 💩"
+
+    with open(HSMA_FILENAME, 'w', encoding='utf-8') as file:
+        file.write(menu)
+
+
+async def download_hsma_week():
+    with requests.get("https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim-view-week.html", verify=False, timeout=5) as url:
+        soup = BeautifulSoup(url.content)
+    match = soup.find_all(class_='active1')
+    data = parse_week(match)
+    menu = "".join(data)
+ #   menu = replace_paranthesis(menu)
+
+    if not match:
+        menu = "Hochschulmensa hat zu 💩"
+
+    with open(HSMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
+        file.write(menu)
+
+
+async def download_unima_week():
+    with requests.get("https://www.stw-ma.de/men%C3%BCplan_schlossmensa-view-week.html", verify=False, timeout=5) as url:
+        soup = BeautifulSoup(url.content)
+    match = soup.find_all(class_='active1')
+    data = parse_week(match)
+
+    menu = "".join(data)
+  #  menu = replace_paranthesis(menu)
+
+    if not match:
+        menu = "Unimensa hat zu 💩"
+
+    with open(UNIMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
+        file.write(menu)
+
+
+async def cache_all_menus():
+    "caches all menus as files"
+    print("caching menus")
+    await download_hsma_week()
+    await download_hsma()
+    await download_unima_week()
+
+
+@bot.message_handler(commands=["start", "help"])
 def start(message):
     welcome_string = """commands
 /bp für blockplan
@@ -32,16 +116,15 @@ def start(message):
 
 @bot.message_handler(commands=["bp"])
 def get_blockplan(message):
-    data = [["Block","Start", "Ende"]]
+    data = [["Block", "Start", "Ende"]]
     data += [["1", "08:00", "09:30"]]
     data += [["2", "09:45", "11:15"]]
     data += [["3", "12:00", "13:30"]]
     data += [["4", "13:40", "15:10"]]
     data += [["5", "15:20", "16:50"]]
     data += [["6", "17:00", "18:30"]]
-    
 
-    reply_string ="Wintersemester\n"
+    reply_string = "Wintersemester\n"
 
     for row in data:
         for col in row:
@@ -49,101 +132,97 @@ def get_blockplan(message):
         reply_string += "\n"
 
     reply_string += "Sommersemester\n"
-    data_sose = [["Block","Start", "Ende"]]
+    data_sose = [["Block", "Start", "Ende"]]
     data_sose += [["1", "08:00", "09:30"]]
     data_sose += [["2", "09:45", "11:15"]]
     data_sose += [["3", "11:30", "13:00"]]
     data_sose += [["4", "13:40", "15:10"]]
     data_sose += [["5", "15:20", "16:50"]]
     data_sose += [["6", "17:00", "18:30"]]
-    
+
     for row in data_sose:
         for col in row:
             reply_string += f"{col:<12}"
         reply_string += "\n"
 
-    
     bot.reply_to(message, reply_string)
-
-
 
 
 def replace_paranthesis(stri):
     para_auf = [i for i in range(len(stri)) if stri[i] == "("]
     para_zu = [i for i in range(len(stri)) if stri[i] == ")"]
     para = list(zip(para_auf, para_zu))
-    words = [stri[pair[0]-1:pair[1]+1] for pair in para]
+    words = [stri[pair[0] - 1:pair[1] + 1] for pair in para]
     for word in words:
         stri = stri.replace(word, " ")
     return stri
 
+
 @bot.message_handler(commands=['mensa'])
-def mensa(message):
+async def mensa(message):
+    with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
+        menu = file.read()
+    await bot.send_message(message.chat.id, menu, parse_mode='Markdown')
 
-    URL="https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim.html"
-
-    with requests.get(URL, verify=False) as url:
-        soup = BeautifulSoup(url.content, features="lxml")
-    match = soup.find(class_='speiseplan-table')
-
-    result_message=""
-    for row in match:
-        if type(row) is not bs4.element.NavigableString:
-            cells = row.find_all("td")
-            del cells[-2]
-            for cell in cells:
-                # print(cell)
-                stri = cell.get_text()
-                result = re.sub(r'[\t\n]+', '', stri)
-                result = re.sub(r'\€Stück|€Portion|€pro100g','€', result)
-                result_message+=result+"\n"
-            result_message+="\n"
-    if not result_message:
-        result_message="Hochschulmensa hat zu 💩"
-    
-    bot.send_message(message.chat.id, result_message)
 
 @bot.message_handler(commands=['mensa_week'])
-def mensa(message):
+async def mensa_week(message):
+    with open(HSMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
+        menu = file.read()
+    menu_days = menu.split("*")
 
-    with requests.get("https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim-view-week.html", verify=False) as url:
-        soup = BeautifulSoup(url.content)
-    match = soup.find_all(class_='active1')
-    data = [ele.text for ele in match]
-    data = [ele.replace("\t",'').replace("\n\n\n", "\n\n") for ele in data]
-    data = [ele.replace("Montag", "*Montag*") for ele in data]
-    data = [ele.replace("Dienstag", "*Dienstag*") for ele in data]
-    data = [ele.replace("Mittwoch", "*Mittwoch*") for ele in data]
-    data = [ele.replace("Donnerstag", "*Donnerstag*") for ele in data]
-    data = [ele.replace("Freitag", "*Freitag*") for ele in data]
-    data = [ele.replace("`", "'") for ele in data]
+    menu_days=menu_days[1:]
     
-    menu = "".join(data)
- #   menu = replace_paranthesis(menu)
+    menu_days = [menu_days[i] + menu_days[i+1] for i in range(0, len(menu_days)-1, 2)]
 
-    if not match:
-        menu="Hochschulmensa hat zu 💩"
-    bot.send_message(message.chat.id, menu, parse_mode='Markdown')
+    for day in menu_days:
+        await bot.send_message(message.chat.id, day, parse_mode="Markdown")
+    
 
 @bot.message_handler(commands=['unimensa_week'])
-def mensa(message):
-    with requests.get("https://www.stw-ma.de/men%C3%BCplan_schlossmensa-view-week.html", verify=False) as url:
-        soup = BeautifulSoup(url.content)
-    match = soup.find_all(class_='active1')
-    data = [ele.text for ele in match]
-    data = [ele.replace("\t",'').replace("\n\n\n", "\n\n") for ele in data]
-    data = [ele.replace("Montag", "*Montag*") for ele in data]
-    data = [ele.replace("Dienstag", "*Dienstag*") for ele in data]
-    data = [ele.replace("Mittwoch", "*Mittwoch*") for ele in data]
-    data = [ele.replace("Donnerstag", "*Donnerstag*") for ele in data]
-    data = [ele.replace("Freitag", "*Freitag*") for ele in data]
+async def uni_mensa(message):
+    with open(UNIMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
+        menu = file.read()
+
+    menu_days = menu.split("*")
+
+    menu_days=menu_days[1:]
     
-    menu = "".join(data)
-  #  menu = replace_paranthesis(menu)
+    menu_days = [menu_days[i] + menu_days[i+1] for i in range(0, len(menu_days)-1, 2)]
 
-    if not match:
-        menu="Unimensa hat zu 💩"
-    bot.send_message(message.chat.id, menu, parse_mode='Markdown')
+    for day in menu_days:
+        await bot.send_message(message.chat.id, day, parse_mode="Markdown")
 
 
-bot.polling()
+
+async def bot_poll():
+    while True:
+        await bot.polling()
+        asyncio.sleep(1.0)
+
+async def run_scheduler():
+    sched = AsyncIOScheduler()
+    sched.configure(timezone='Europe/Rome')
+    sched.add_job(
+        cache_all_menus,
+        'cron',
+        year="*",
+        month="*",
+        day="*",
+        hour=19,
+        minute=11,
+        second=0
+        )
+    sched.start()
+
+    while True:
+        await asyncio.sleep(1)
+
+
+async def main():
+    await asyncio.gather(bot_poll(), run_scheduler())
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
+    
