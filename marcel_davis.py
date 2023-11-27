@@ -2,9 +2,11 @@
 import requests
 import bs4
 import re
+import os
 from bs4 import BeautifulSoup
 from tgbot_config import API_KEY
 from telebot.async_telebot import AsyncTeleBot
+from telebot import types
 import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -14,17 +16,6 @@ HSMA_FILENAME = "hsma_menu.txt"
 UNIMA_WEEK_FILENAME = "unima_week_menu.txt"
 
 bot = AsyncTeleBot(API_KEY)
-
-# await bot.set_my_commands([
-#     telebot.types.BotCommand("/help", "Hilfe"),
-#     telebot.types.BotCommand("/mensa", "mensa heute"),
-#     telebot.types.BotCommand("/mensa_week", "mensamenu woche"),
-#     telebot.types.BotCommand("/bp", "Blockzeit"),
-#     telebot.types.BotCommand("/unimensa_week", "unimensamenu der woche"),
-# ]
-# )
-
-
 
 
 def parse_week(match):
@@ -39,7 +30,7 @@ def parse_week(match):
     return data
 
 
-async def download_hsma():
+def download_hsma():
     URL = "https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim.html"
 
     with requests.get(URL, verify=False, timeout=5) as url:
@@ -65,7 +56,7 @@ async def download_hsma():
         file.write(menu)
 
 
-async def download_hsma_week():
+def download_hsma_week():
     with requests.get("https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim-view-week.html", verify=False, timeout=5) as url:
         soup = BeautifulSoup(url.content)
     match = soup.find_all(class_='active1')
@@ -80,7 +71,7 @@ async def download_hsma_week():
         file.write(menu)
 
 
-async def download_unima_week():
+def download_unima_week():
     with requests.get("https://www.stw-ma.de/men%C3%BCplan_schlossmensa-view-week.html", verify=False, timeout=5) as url:
         soup = BeautifulSoup(url.content)
     match = soup.find_all(class_='active1')
@@ -96,12 +87,12 @@ async def download_unima_week():
         file.write(menu)
 
 
-async def cache_all_menus():
+def cache_all_menus():
     "caches all menus as files"
     print("caching menus")
-    await download_hsma_week()
-    await download_hsma()
-    await download_unima_week()
+    download_hsma_week()
+    download_hsma()
+    download_unima_week()
 
 
 @bot.message_handler(commands=["start", "help"])
@@ -209,8 +200,8 @@ async def run_scheduler():
         year="*",
         month="*",
         day="*",
-        hour=19,
-        minute=11,
+        hour=00,
+        minute=00,
         second=0
         )
     sched.start()
@@ -219,10 +210,24 @@ async def run_scheduler():
         await asyncio.sleep(1)
 
 
+async def set_options():
+    await bot.set_my_commands([
+    types.BotCommand("/help", "Hilfe"),
+    types.BotCommand("/mensa", "mensa heute"),
+    types.BotCommand("/mensa_week", "mensamenu woche"),
+    types.BotCommand("/bp", "Blockzeit"),
+    types.BotCommand("/unimensa_week", "unimensamenu der woche"),
+]
+) 
+
+
 async def main():
+    await set_options()
     await asyncio.gather(bot_poll(), run_scheduler())
 
 
 if __name__ == '__main__':
+    if not os.path.exists(HSMA_FILENAME):
+        cache_all_menus()
     asyncio.run(main())
     
