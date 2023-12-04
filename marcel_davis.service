@@ -1,0 +1,14 @@
+[Unit]
+Description=TelegramBot
+Wants=network.target
+After=network.target
+
+[Service]
+WorkingDirectory=/usr/local/bin/marcel_davis/
+User=tgbot_user
+ExecStart= python3 marcel_davis.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
