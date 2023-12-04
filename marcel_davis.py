@@ -205,7 +205,7 @@ async def run_scheduler():
         year="*",
         month="*",
         day="*",
-        hour=00,
+        hour=05,
         minute=00,
         second=0
         )
