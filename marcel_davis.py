@@ -3,7 +3,6 @@ import logging
 import requests
 import bs4
 import re
-import os
 from bs4 import BeautifulSoup
 from tgbot_config import API_KEY
 from telebot.async_telebot import AsyncTeleBot
@@ -49,7 +48,7 @@ def download_hsma():
             cells = row.find_all("td")
             del cells[-2]
             for cell in cells:
-                # log.info(cell)
+                log.info(cell)
                 stri = cell.get_text()
                 result = re.sub(r'[\t\n]+', '', stri)
                 result = re.sub(r'\€Stück|€Portion|€pro100g', '€', result)
@@ -194,13 +193,15 @@ async def uni_mensa(message):
         await bot.reply_to(message, day, parse_mode="Markdown")
 
 @bot.message_handler(commands=['abo'])
-def abo(message):
+async def abo(message):
     chatid = message.chat.id
     if chatid not in all_abo_chat_id:
         all_abo_chat_id.append(chatid)
+        await bot.reply_to(message, "du wirst jetzt täglich Infos zur mensa erhalten")
         log.info(f"added chat with chatid {chatid}")
     else:
         all_abo_chat_id.remove(chatid)
+        await bot.reply_to(message, "du wirst jetzt täglich **keine** Infos zur mensa erhalten", parse_mode="markdown")
         log.info(f"removed chat with chatid {chatid}")
 
 
@@ -208,6 +209,8 @@ def abo(message):
 async def send_all_abos():
     while True:
         log.info(f"currently there are {len(all_abo_chat_id)} abos")
+        with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
+            menu = file.read()
         if len(all_abo_chat_id) > 0:
             for chat_id in all_abo_chat_id:
                 await bot.send_message(chat_id, "hallo")
@@ -231,9 +234,19 @@ async def run_scheduler():
         year="*",
         month="*",
         day="*",
-        hour="*",
-        minute="*",
-        second="*/20"
+        hour=6,
+        minute=30,
+        second=0
+        )
+    sched.add_job(
+        send_all_abos,
+        'cron',
+        year="*",
+        month="*",
+        day="*",
+        hour=7,
+        minute=0,
+        second=0
         )
     sched.start()
 
@@ -255,7 +268,7 @@ async def set_options():
 
 async def main():
     log.info("running background tasks")
-    await asyncio.gather(set_options(), bot_poll(), run_scheduler(), send_all_abos())
+    await asyncio.gather(set_options(), bot_poll(), run_scheduler())
 
 
 if __name__ == '__main__':
