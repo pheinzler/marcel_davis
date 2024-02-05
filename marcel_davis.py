@@ -208,7 +208,7 @@ def abo(message):
 async def send_all_abos():
     while True:
         log.info(f"currently there are {len(all_abo_chat_id)} abos")
-        if len(all_abo_chat_id >0):
+        if len(all_abo_chat_id) > 0:
             for chat_id in all_abo_chat_id:
                 await bot.send_message(chat_id, "hallo")
         await asyncio.sleep(1.0)
