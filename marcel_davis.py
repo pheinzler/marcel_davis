@@ -9,11 +9,14 @@ from telebot.async_telebot import AsyncTeleBot
 from telebot import types
 import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import logging
+# from systemd.journal import JournalHandler
 
 TIMEOUT = 5
 HSMA_WEEK_FILENAME = "hsma_week_menu.txt"
 HSMA_FILENAME = "hsma_menu.txt"
 UNIMA_WEEK_FILENAME = "unima_week_menu.txt"
+TESTFILE = "test.txt"
 
 bot = AsyncTeleBot(API_KEY)
 
@@ -43,7 +46,7 @@ def download_hsma():
             cells = row.find_all("td")
             del cells[-2]
             for cell in cells:
-                # print(cell)
+                # log.info(cell)
                 stri = cell.get_text()
                 result = re.sub(r'[\t\n]+', '', stri)
                 result = re.sub(r'\€Stück|€Portion|€pro100g', '€', result)
@@ -87,13 +90,19 @@ def download_unima_week():
         file.write(menu)
 
 
+def download_test():
+    data = requests.get("http://localhost:5000", verify=False, timeout=5).text
+    with open(TESTFILE, 'w', encoding='utf-8') as file:
+        file.write(data)
+
+
 def cache_all_menus():
     "caches all menus as files"
-    print("caching menus")
+    log.info("caching menus")
     download_hsma_week()
     download_hsma()
     download_unima_week()
-
+    # download_test()
 
 @bot.message_handler(commands=["start", "help"])
 def start(message):
@@ -151,7 +160,7 @@ def replace_paranthesis(stri):
 
 @bot.message_handler(commands=['mensa'])
 async def mensa(message):
-    print("mensa was called")
+    log.info("mensa was called")
     with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
     await bot.send_message(message.chat.id, menu, parse_mode='Markdown')
@@ -159,7 +168,7 @@ async def mensa(message):
 
 @bot.message_handler(commands=['mensa_week'])
 async def mensa_week(message):
-    print("mensaweek was called")
+    log.info("mensaweek was called")
     with open(HSMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
     menu_days = menu.split("*")
@@ -174,7 +183,7 @@ async def mensa_week(message):
 
 @bot.message_handler(commands=['unimensa_week'])
 async def uni_mensa(message):
-    print("unimensa was called")
+    log.info("unimensa was called")
     with open(UNIMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
 
@@ -190,13 +199,14 @@ async def uni_mensa(message):
 
 
 async def bot_poll():
+    # pass
     while True:
-        print("polling msgs")
-        await bot.polling()
-        asyncio.sleep(1.0)
+        log.info("polling msgs")
+        # await bot.polling()
+        await asyncio.sleep(1.0)
 
 async def run_scheduler():
-    print("running scheduler")
+    log.info("running scheduler")
     sched = AsyncIOScheduler()
     sched.configure(timezone='Europe/Rome')
     sched.add_job(
@@ -205,9 +215,9 @@ async def run_scheduler():
         year="*",
         month="*",
         day="*",
-        hour=5,
-        minute=00,
-        second=0
+        hour="*",
+        minute="*",
+        second="*/3"
         )
     sched.start()
 
@@ -223,21 +233,21 @@ async def set_options():
     types.BotCommand("/bp", "Blockzeit"),
     types.BotCommand("/unimensa_week", "unimensamenu der woche"),
 ]
-) 
+)
 
 
 async def main():
-   
-    print("running background tasks")
+    log.info("running background tasks")
     await asyncio.gather(set_options(), bot_poll(), run_scheduler())
 
 
 if __name__ == '__main__':
-    print("starting bot")
-    print("check if file not exist")
-    if not os.path.exists(HSMA_FILENAME):
-        print("file does not exist. downloading.")
-        cache_all_menus()
-    print("running mainloop")
+    log = logging.getLogger("marcel_davis")
+    log.addHandler(JournalHandler())
+    log.setLevel(logging.INFO)
+    # logging.basicConfig(level=logging.INFO)
+    log.info("starting bot")
+    cache_all_menus()
+    log.info("running mainloop")
     asyncio.run(main())
     
