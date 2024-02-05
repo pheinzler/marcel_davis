@@ -262,7 +262,7 @@ if __name__ == '__main__':
     log.setLevel(logging.INFO)
     # logging.basicConfig(level=logging.INFO)
     log.info("starting bot")
-    cache_all_menus(log)
+    cache_all_menus()
     log.info("running mainloop")
     asyncio.run(main())
     
