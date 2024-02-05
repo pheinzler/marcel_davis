@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 import requests
 import bs4
 import re
@@ -8,8 +9,9 @@ from tgbot_config import API_KEY
 from telebot.async_telebot import AsyncTeleBot
 from telebot import types
 import asyncio
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import logging
+
 from systemd.journal import JournalHandler
 
 TIMEOUT = 5
@@ -91,13 +93,7 @@ def download_unima_week():
         file.write(menu)
 
 
-def download_test():
-    data = requests.get("http://localhost:5000", timeout=5).text
-    with open(TESTFILE, 'w', encoding='utf-8') as file:
-        file.write(data)
-
-
-def cache_all_menus():
+def cache_all_menus(log):
     "caches all menus as files"
     log.info("caching menus")
     download_hsma_week()
@@ -199,14 +195,18 @@ async def uni_mensa(message):
 
 @bot.message_handler(commands=['abo'])
 def abo(message):
-    if message.chat.id not in all_abos:
-        all_abos.append(message.chat.id)
+    chatid = message.chat.id
+    if chatid not in all_abos:
+        all_abos.append(chatid)
+        log.info(f"added chat with chatid {chatid}")
     else:
-        all_abos.remove(message.chat.id)
+        all_abos.remove(chatid)
+        log.info(f"removed chat with chatid {chatid}")
+
 
 
 async def send_all_abos():
-    logger.info(f"currently there are {len(all_abos)} abos")
+    log.info(f"currently there are {len(all_abos)} abos")
     if len(all_abos >0):
         for abo in all_abos:
             await bot.send_message(abo, "hallo")
@@ -262,7 +262,7 @@ if __name__ == '__main__':
     log.setLevel(logging.INFO)
     # logging.basicConfig(level=logging.INFO)
     log.info("starting bot")
-    cache_all_menus()
+    cache_all_menus(log)
     log.info("running mainloop")
     asyncio.run(main())
     
