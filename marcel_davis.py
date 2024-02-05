@@ -22,7 +22,7 @@ UNIMA_WEEK_FILENAME = "unima_week_menu.txt"
 
 bot = AsyncTeleBot(API_KEY)
 
-all_abos = []
+all_abo_chat_id = []
 
 def parse_week(match):
     data = [ele.text for ele in match]
@@ -196,20 +196,22 @@ async def uni_mensa(message):
 @bot.message_handler(commands=['abo'])
 def abo(message):
     chatid = message.chat.id
-    if chatid not in all_abos:
-        all_abos.append(chatid)
+    if chatid not in all_abo_chat_id:
+        all_abo_chat_id.append(chatid)
         log.info(f"added chat with chatid {chatid}")
     else:
-        all_abos.remove(chatid)
+        all_abo_chat_id.remove(chatid)
         log.info(f"removed chat with chatid {chatid}")
 
 
 
 async def send_all_abos():
-    log.info(f"currently there are {len(all_abos)} abos")
-    if len(all_abos >0):
-        for abo in all_abos:
-            await bot.send_message(abo, "hallo")
+    while True:
+        log.info(f"currently there are {len(all_abo_chat_id)} abos")
+        if len(all_abo_chat_id >0):
+            for chat_id in all_abo_chat_id:
+                await bot.send_message(chat_id, "hallo")
+        await asyncio.sleep(1.0)
 
 
 async def bot_poll():
@@ -217,7 +219,6 @@ async def bot_poll():
     while True:
         log.info("polling msgs")
         await bot.polling()
-        await send_all_abos()
         await asyncio.sleep(1.0)
 
 async def run_scheduler():
@@ -247,13 +248,14 @@ async def set_options():
     types.BotCommand("/mensa_week", "mensamenu woche"),
     types.BotCommand("/bp", "Blockzeit"),
     types.BotCommand("/unimensa_week", "unimensamenu der woche"),
+    types.BotCommand("/abo", "toggelt abbos"),
 ]
 )
 
 
 async def main():
     log.info("running background tasks")
-    await asyncio.gather(set_options(), bot_poll(), run_scheduler())
+    await asyncio.gather(set_options(), bot_poll(), run_scheduler(), send_all_abos())
 
 
 if __name__ == '__main__':
