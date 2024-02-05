@@ -10,16 +10,17 @@ from telebot import types
 import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import logging
-# from systemd.journal import JournalHandler
+from systemd.journal import JournalHandler
 
 TIMEOUT = 5
 HSMA_WEEK_FILENAME = "hsma_week_menu.txt"
 HSMA_FILENAME = "hsma_menu.txt"
 UNIMA_WEEK_FILENAME = "unima_week_menu.txt"
-TESTFILE = "test.txt"
+#TESTFILE = "test.txt"
 
 bot = AsyncTeleBot(API_KEY)
 
+all_abos = []
 
 def parse_week(match):
     data = [ele.text for ele in match]
@@ -36,7 +37,7 @@ def parse_week(match):
 def download_hsma():
     URL = "https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim.html"
 
-    with requests.get(URL, verify=False, timeout=5) as url:
+    with requests.get(URL, timeout=5) as url:
         soup = BeautifulSoup(url.content, features="lxml")
     match = soup.find(class_='speiseplan-table')
 
@@ -60,7 +61,7 @@ def download_hsma():
 
 
 def download_hsma_week():
-    with requests.get("https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim-view-week.html", verify=False, timeout=5) as url:
+    with requests.get("https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim-view-week.html", timeout=5) as url:
         soup = BeautifulSoup(url.content)
     match = soup.find_all(class_='active1')
     data = parse_week(match)
@@ -75,7 +76,7 @@ def download_hsma_week():
 
 
 def download_unima_week():
-    with requests.get("https://www.stw-ma.de/men%C3%BCplan_schlossmensa-view-week.html", verify=False, timeout=5) as url:
+    with requests.get("https://www.stw-ma.de/men%C3%BCplan_schlossmensa-view-week.html", timeout=5) as url:
         soup = BeautifulSoup(url.content)
     match = soup.find_all(class_='active1')
     data = parse_week(match)
@@ -91,7 +92,7 @@ def download_unima_week():
 
 
 def download_test():
-    data = requests.get("http://localhost:5000", verify=False, timeout=5).text
+    data = requests.get("http://localhost:5000", timeout=5).text
     with open(TESTFILE, 'w', encoding='utf-8') as file:
         file.write(data)
 
@@ -105,17 +106,17 @@ def cache_all_menus():
     # download_test()
 
 @bot.message_handler(commands=["start", "help"])
-def start(message):
+async def start(message):
     welcome_string = """commands
 /bp für blockplan
 /mensa für heutiges mensamenü
 /mensa_week für ganze woche
 """
-    bot.send_message(message.chat.id, welcome_string)
+    await bot.reply_to(message, welcome_string)
 
 
 @bot.message_handler(commands=["bp"])
-def get_blockplan(message):
+async def get_blockplan(message):
     data = [["Block", "Start", "Ende"]]
     data += [["1", "08:00", "09:30"]]
     data += [["2", "09:45", "11:15"]]
@@ -145,7 +146,7 @@ def get_blockplan(message):
             reply_string += f"{col:<12}"
         reply_string += "\n"
 
-    bot.reply_to(message, reply_string)
+    await bot.reply_to(message, reply_string)
 
 
 def replace_paranthesis(stri):
@@ -163,7 +164,7 @@ async def mensa(message):
     log.info("mensa was called")
     with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
-    await bot.send_message(message.chat.id, menu, parse_mode='Markdown')
+    await bot.reply_to(message, menu, parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['mensa_week'])
@@ -178,7 +179,7 @@ async def mensa_week(message):
     menu_days = [menu_days[i] + menu_days[i+1] for i in range(0, len(menu_days)-1, 2)]
 
     for day in menu_days:
-        await bot.send_message(message.chat.id, day, parse_mode="Markdown")
+        await bot.reply_to(message, day, parse_mode="Markdown")
     
 
 @bot.message_handler(commands=['unimensa_week'])
@@ -194,15 +195,29 @@ async def uni_mensa(message):
     menu_days = [menu_days[i] + menu_days[i+1] for i in range(0, len(menu_days)-1, 2)]
 
     for day in menu_days:
-        await bot.send_message(message.chat.id, day, parse_mode="Markdown")
+        await bot.reply_to(message, day, parse_mode="Markdown")
 
+@bot.message_handler(commands=['abo'])
+def abo(message):
+    if message.chat.id not in all_abos:
+        all_abos.append(message.chat.id)
+    else:
+        all_abos.remove(message.chat.id)
+
+
+async def send_all_abos():
+    logger.info(f"currently there are {len(all_abos)} abos")
+    if len(all_abos >0):
+        for abo in all_abos:
+            await bot.send_message(abo, "hallo")
 
 
 async def bot_poll():
     # pass
     while True:
         log.info("polling msgs")
-        # await bot.polling()
+        await bot.polling()
+        await send_all_abos()
         await asyncio.sleep(1.0)
 
 async def run_scheduler():
@@ -217,7 +232,7 @@ async def run_scheduler():
         day="*",
         hour="*",
         minute="*",
-        second="*/3"
+        second="*/20"
         )
     sched.start()
 
