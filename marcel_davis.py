@@ -5,11 +5,10 @@ import bs4
 import re
 from bs4 import BeautifulSoup
 from tgbot_config import API_KEY
-from telebot.async_telebot import AsyncTeleBot
-from telebot import types
-import asyncio
+from telebot import TeleBot, types
+import io
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 from systemd.journal import JournalHandler
 
@@ -17,9 +16,8 @@ TIMEOUT = 5
 HSMA_WEEK_FILENAME = "hsma_week_menu.txt"
 HSMA_FILENAME = "hsma_menu.txt"
 UNIMA_WEEK_FILENAME = "unima_week_menu.txt"
-#TESTFILE = "test.txt"
 
-bot = AsyncTeleBot(API_KEY)
+bot = TeleBot(API_KEY)
 
 all_abo_chat_id = []
 
@@ -101,17 +99,17 @@ def cache_all_menus():
     # download_test()
 
 @bot.message_handler(commands=["start", "help"])
-async def start(message):
+def start(message):
     welcome_string = """commands
 /bp für blockplan
 /mensa für heutiges mensamenü
 /mensa_week für ganze woche
 """
-    await bot.reply_to(message, welcome_string)
+    bot.reply_to(message, welcome_string)
 
 
 @bot.message_handler(commands=["bp"])
-async def get_blockplan(message):
+def get_blockplan(message):
     data = [["Block", "Start", "Ende"]]
     data += [["1", "08:00", "09:30"]]
     data += [["2", "09:45", "11:15"]]
@@ -141,7 +139,7 @@ async def get_blockplan(message):
             reply_string += f"{col:<12}"
         reply_string += "\n"
 
-    await bot.reply_to(message, reply_string)
+    bot.reply_to(message, reply_string)
 
 
 def replace_paranthesis(stri):
@@ -155,15 +153,15 @@ def replace_paranthesis(stri):
 
 
 @bot.message_handler(commands=['mensa'])
-async def mensa(message):
+def mensa(message):
     log.info("mensa was called")
     with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
-    await bot.reply_to(message, menu, parse_mode='Markdown')
+    bot.reply_to(message, menu, parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['mensa_week'])
-async def mensa_week(message):
+def mensa_week(message):
     log.info("mensaweek was called")
     with open(HSMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
@@ -174,11 +172,11 @@ async def mensa_week(message):
     menu_days = [menu_days[i] + menu_days[i+1] for i in range(0, len(menu_days)-1, 2)]
 
     for day in menu_days:
-        await bot.reply_to(message, day, parse_mode="Markdown")
+         bot.reply_to(message, day, parse_mode="Markdown")
     
 
 @bot.message_handler(commands=['unimensa_week'])
-async def uni_mensa(message):
+def uni_mensa(message):
     log.info("unimensa was called")
     with open(UNIMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
@@ -190,43 +188,39 @@ async def uni_mensa(message):
     menu_days = [menu_days[i] + menu_days[i+1] for i in range(0, len(menu_days)-1, 2)]
 
     for day in menu_days:
-        await bot.reply_to(message, day, parse_mode="Markdown")
+         bot.reply_to(message, day, parse_mode="Markdown")
 
 @bot.message_handler(commands=['abo'])
-async def abo(message):
+def abo(message):
     chatid = message.chat.id
     if chatid not in all_abo_chat_id:
         all_abo_chat_id.append(chatid)
-        await bot.reply_to(message, "du wirst jetzt täglich Infos zur mensa erhalten")
+        bot.reply_to(message, "du wirst jetzt täglich Infos zur mensa erhalten")
         log.info(f"added chat with chatid {chatid}")
     else:
         all_abo_chat_id.remove(chatid)
-        await bot.reply_to(message, "du wirst jetzt täglich **keine** Infos zur mensa erhalten", parse_mode="markdown")
+        bot.reply_to(message, "du wirst jetzt täglich **keine** Infos zur mensa erhalten", parse_mode="markdown")
         log.info(f"removed chat with chatid {chatid}")
 
 
 
-async def send_all_abos():
-    while True:
-        log.info(f"currently there are {len(all_abo_chat_id)} abos")
-        with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
-            menu = file.read()
+def send_all_abos():
+    log.info(f"currently there are {len(all_abo_chat_id)} abos")
+    with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
+        menu = file.read()
         if len(all_abo_chat_id) > 0:
             for chat_id in all_abo_chat_id:
-                await bot.send_message(chat_id, "hallo")
-        await asyncio.sleep(1.0)
+                bot.send_message(chat_id, menu) 
 
-
-async def bot_poll():
+def bot_poll():
     # pass
     while True:
         log.info("polling msgs")
-        await bot.polling()
-        await asyncio.sleep(1.0)
-
-async def run_scheduler():
+        bot.infinity_polling()
+        
+def run_scheduler():
     log.info("running scheduler")
-    sched = AsyncIOScheduler()
+    sched = BlockingScheduler()
     sched.configure(timezone='Europe/Rome')
     sched.add_job(
         cache_all_menus,
@@ -252,13 +246,8 @@ async def run_scheduler():
 
 
 
-    while True:
-        # log.info(f"scheduled jobs are {[job.trigger for job in sched.get_jobs()]}")
-        await asyncio.sleep(1)
-
-
-async def set_options():
-    await bot.set_my_commands([
+def set_options():
+    bot.set_my_commands([
     types.BotCommand("/help", "Hilfe"),
     types.BotCommand("/mensa", "mensa heute"),
     types.BotCommand("/mensa_week", "mensamenu woche"),
@@ -269,9 +258,11 @@ async def set_options():
 )
 
 
-async def main():
+def main():
     log.info("running background tasks")
-    await asyncio.gather(set_options(), bot_poll(), run_scheduler())
+    set_options()
+    run_scheduler()
+    bot_poll()
 
 
 if __name__ == '__main__':
@@ -282,5 +273,4 @@ if __name__ == '__main__':
     log.info("starting bot")
     cache_all_menus()
     log.info("running mainloop")
-    asyncio.run(main())
-    
+    main()
