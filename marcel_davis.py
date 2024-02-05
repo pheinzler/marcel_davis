@@ -93,7 +93,7 @@ def download_unima_week():
         file.write(menu)
 
 
-def cache_all_menus(log):
+def cache_all_menus():
     "caches all menus as files"
     log.info("caching menus")
     download_hsma_week()
