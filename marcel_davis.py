@@ -253,7 +253,7 @@ async def run_scheduler():
 
 
     while True:
-        log.info(f"scheduled jobs are {[job.trigger for job in sched.get_jobs()]}")
+        # log.info(f"scheduled jobs are {[job.trigger for job in sched.get_jobs()]}")
         await asyncio.sleep(1)
 
 
