@@ -48,7 +48,7 @@ def download_hsma():
             cells = row.find_all("td")
             del cells[-2]
             for cell in cells:
-                log.info(cell)
+                # log.info(cell)
                 stri = cell.get_text()
                 result = re.sub(r'[\t\n]+', '', stri)
                 result = re.sub(r'\€Stück|€Portion|€pro100g', '€', result)
