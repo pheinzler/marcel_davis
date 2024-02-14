@@ -205,7 +205,7 @@ def abo(message):
     chatid = str(message.chat.id)
     with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
         for line in abofile:
-            all_abos.append(line)
+            all_abos.append(line.replace("\n",""))
     if chatid not in all_abos:
         all_abos.append(chatid)
         bot.reply_to(
@@ -222,8 +222,7 @@ def abo(message):
 
     with open(ABO_FILENAME, 'w', encoding="utf-8") as abofile:
         for abo in all_abos:
-            abofile.write(abo + "\n")
-
+            abofile.write("%s\n" % abo)
 
 def send_all_abos():
     all_abos = []
