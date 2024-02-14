@@ -201,9 +201,11 @@ def uni_mensa(message):
 
 @bot.message_handler(commands=['abo'])
 def abo(message):
+    all_abos = []
     chatid = str(message.chat.id)
     with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
-        all_abos = abofile.readlines()
+        for line in abofile:
+            all_abos.append(line)
     if chatid not in all_abos:
         all_abos.append(chatid)
         bot.reply_to(
@@ -219,12 +221,15 @@ def abo(message):
         log.info(f"removed chat with chatid {chatid}")
 
     with open(ABO_FILENAME, 'w', encoding="utf-8") as abofile:
-        abofile.writelines(all_abos)
+        for abo in all_abos:
+            abofile.write(abo + "\n")
 
 
 def send_all_abos():
+    all_abos = []
     with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
-        all_abos = abofile.readlines()
+        for line in abofile:
+            all_abos.append(line)
     log.info(f"sending abos. currently there are {len(all_abos)} abos")
     with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
