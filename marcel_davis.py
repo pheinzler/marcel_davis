@@ -6,9 +6,9 @@ import re
 from bs4 import BeautifulSoup
 from tgbot_config import API_KEY
 from telebot import TeleBot, types
-import io
+from pathlib import Path
 
-from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from systemd.journal import JournalHandler
 
@@ -16,10 +16,10 @@ TIMEOUT = 5
 HSMA_WEEK_FILENAME = "hsma_week_menu.txt"
 HSMA_FILENAME = "hsma_menu.txt"
 UNIMA_WEEK_FILENAME = "unima_week_menu.txt"
+ABO_FILENAME = "abos.txt"
 
 bot = TeleBot(API_KEY)
 
-all_abo_chat_id = []
 
 def parse_week(match):
     data = [ele.text for ele in match]
@@ -90,6 +90,11 @@ def download_unima_week():
         file.write(menu)
 
 
+def create_abos():
+    abos = Path(ABO_FILENAME)
+    abos.touch(exist_ok=True)
+
+
 def cache_all_menus():
     "caches all menus as files"
     log.info("caching menus")
@@ -97,6 +102,7 @@ def cache_all_menus():
     download_hsma()
     download_unima_week()
     # download_test()
+
 
 @bot.message_handler(commands=["start", "help"])
 def start(message):
@@ -167,13 +173,14 @@ def mensa_week(message):
         menu = file.read()
     menu_days = menu.split("*")
 
-    menu_days=menu_days[1:]
-    
-    menu_days = [menu_days[i] + menu_days[i+1] for i in range(0, len(menu_days)-1, 2)]
+    menu_days = menu_days[1:]
+
+    menu_days = [menu_days[i] + menu_days[i + 1]
+                 for i in range(0, len(menu_days) - 1, 2)]
 
     for day in menu_days:
-         bot.reply_to(message, day, parse_mode="Markdown")
-    
+        bot.reply_to(message, day, parse_mode="Markdown")
+
 
 @bot.message_handler(commands=['unimensa_week'])
 def uni_mensa(message):
@@ -183,44 +190,59 @@ def uni_mensa(message):
 
     menu_days = menu.split("*")
 
-    menu_days=menu_days[1:]
-    
-    menu_days = [menu_days[i] + menu_days[i+1] for i in range(0, len(menu_days)-1, 2)]
+    menu_days = menu_days[1:]
+
+    menu_days = [menu_days[i] + menu_days[i + 1]
+                 for i in range(0, len(menu_days) - 1, 2)]
 
     for day in menu_days:
-         bot.reply_to(message, day, parse_mode="Markdown")
+        bot.reply_to(message, day, parse_mode="Markdown")
+
 
 @bot.message_handler(commands=['abo'])
 def abo(message):
-    chatid = message.chat.id
-    if chatid not in all_abo_chat_id:
-        all_abo_chat_id.append(chatid)
-        bot.reply_to(message, "du wirst jetzt täglich Infos zur mensa erhalten")
+    chatid = str(message.chat.id)
+    with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
+        all_abos = abofile.readlines()
+    if chatid not in all_abos:
+        all_abos.append(chatid)
+        bot.reply_to(
+            message,
+            "du wirst jetzt täglich Infos zur mensa erhalten")
         log.info(f"added chat with chatid {chatid}")
     else:
-        all_abo_chat_id.remove(chatid)
-        bot.reply_to(message, "du wirst jetzt täglich **keine** Infos zur mensa erhalten", parse_mode="markdown")
+        all_abos.remove(chatid)
+        bot.reply_to(
+            message,
+            "du wirst jetzt täglich **keine** Infos zur mensa erhalten",
+            parse_mode="markdown")
         log.info(f"removed chat with chatid {chatid}")
 
+    with open(ABO_FILENAME, 'w', encoding="utf-8") as abofile:
+        abofile.writelines(all_abos)
 
 
 def send_all_abos():
-    log.info(f"currently there are {len(all_abo_chat_id)} abos")
+    with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
+        all_abos = abofile.readlines()
+    log.info(f"sending abos. currently there are {len(all_abos)} abos")
     with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
-        if len(all_abo_chat_id) > 0:
-            for chat_id in all_abo_chat_id:
-                bot.send_message(chat_id, menu) 
+        if len(all_abos) > 0:
+            for chat_id in all_abos:
+                bot.send_message(chat_id, menu)
+
 
 def bot_poll():
     # pass
     while True:
         log.info("polling msgs")
         bot.infinity_polling()
-        
+
+
 def run_scheduler():
     log.info("running scheduler")
-    sched = BlockingScheduler()
+    sched = BackgroundScheduler()
     sched.configure(timezone='Europe/Rome')
     sched.add_job(
         cache_all_menus,
@@ -229,9 +251,9 @@ def run_scheduler():
         month="*",
         day="*",
         hour=6,
-        minute=30,
+        minute=0,
         second=0
-        )
+    )
     sched.add_job(
         send_all_abos,
         'cron',
@@ -241,21 +263,20 @@ def run_scheduler():
         hour=7,
         minute=0,
         second=0
-        )
+    )
     sched.start()
-
 
 
 def set_options():
     bot.set_my_commands([
-    types.BotCommand("/help", "Hilfe"),
-    types.BotCommand("/mensa", "mensa heute"),
-    types.BotCommand("/mensa_week", "mensamenu woche"),
-    types.BotCommand("/bp", "Blockzeit"),
-    types.BotCommand("/unimensa_week", "unimensamenu der woche"),
-    types.BotCommand("/abo", "toggelt abbos"),
-]
-)
+        types.BotCommand("/help", "Hilfe"),
+        types.BotCommand("/mensa", "mensa heute"),
+        types.BotCommand("/mensa_week", "mensamenu woche"),
+        types.BotCommand("/bp", "Blockzeit"),
+        types.BotCommand("/unimensa_week", "unimensamenu der woche"),
+        types.BotCommand("/abo", "toggelt abbos"),
+    ]
+    )
 
 
 def main():
@@ -272,5 +293,6 @@ if __name__ == '__main__':
     # logging.basicConfig(level=logging.INFO)
     log.info("starting bot")
     cache_all_menus()
+    create_abos()
     log.info("running mainloop")
     main()
