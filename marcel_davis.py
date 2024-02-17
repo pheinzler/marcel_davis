@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from tgbot_config import API_KEY
 from telebot import TeleBot, types
 from pathlib import Path
+from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -70,6 +71,10 @@ def download_hsma_week():
     if not match:
         menu = "Hochschulmensa hat zu 💩"
 
+    curr_day = datetime.today().strftime("%A")
+
+    menu = curr_day + "\n\n" + curr_day
+
     with open(HSMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menu)
 
@@ -106,46 +111,9 @@ def cache_all_menus():
 
 @bot.message_handler(commands=["start", "help"])
 def start(message):
-    welcome_string = """commands
-/bp für blockplan
-/mensa für heutiges mensamenü
-/mensa_week für ganze woche
+    welcome_string = """Willkommen beim inoffiziellen Mensabot
 """
     bot.reply_to(message, welcome_string)
-
-
-@bot.message_handler(commands=["bp"])
-def get_blockplan(message):
-    data = [["Block", "Start", "Ende"]]
-    data += [["1", "08:00", "09:30"]]
-    data += [["2", "09:45", "11:15"]]
-    data += [["3", "12:00", "13:30"]]
-    data += [["4", "13:40", "15:10"]]
-    data += [["5", "15:20", "16:50"]]
-    data += [["6", "17:00", "18:30"]]
-
-    reply_string = "Wintersemester\n"
-
-    for row in data:
-        for col in row:
-            reply_string += f"{col:<12}"
-        reply_string += "\n"
-
-    reply_string += "Sommersemester\n"
-    data_sose = [["Block", "Start", "Ende"]]
-    data_sose += [["1", "08:00", "09:30"]]
-    data_sose += [["2", "09:45", "11:15"]]
-    data_sose += [["3", "11:30", "13:00"]]
-    data_sose += [["4", "13:40", "15:10"]]
-    data_sose += [["5", "15:20", "16:50"]]
-    data_sose += [["6", "17:00", "18:30"]]
-
-    for row in data_sose:
-        for col in row:
-            reply_string += f"{col:<12}"
-        reply_string += "\n"
-
-    bot.reply_to(message, reply_string)
 
 
 def replace_paranthesis(stri):
@@ -253,8 +221,8 @@ def run_scheduler():
         'cron',
         year="*",
         month="*",
-        day="*",
-        hour=6,
+        day="0-4",
+        hour=4,
         minute=0,
         second=0
     )
@@ -263,7 +231,7 @@ def run_scheduler():
         'cron',
         year="*",
         month="*",
-        day="*",
+        day="0-4",
         hour=7,
         minute=0,
         second=0
@@ -274,11 +242,10 @@ def run_scheduler():
 def set_options():
     bot.set_my_commands([
         types.BotCommand("/help", "Hilfe"),
-        types.BotCommand("/mensa", "mensa heute"),
-        types.BotCommand("/mensa_week", "mensamenu woche"),
-        types.BotCommand("/bp", "Blockzeit"),
+        types.BotCommand("/mensa", "Mensamenü des Tages"),
+        types.BotCommand("/mensa_week", "Mensamenü der Woche"),
         types.BotCommand("/unimensa_week", "unimensamenu der woche"),
-        types.BotCommand("/abo", "toggelt abbos"),
+        types.BotCommand("/abo", "(De)Abboniere den Täglichen Mensareport"),
     ]
     )
 
