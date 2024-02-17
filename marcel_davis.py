@@ -218,7 +218,7 @@ def run_scheduler():
         'cron',
         year="*",
         month="*",
-        day="0-4",
+        day_of_week="0-4",
         hour=4,
         minute=0,
         second=0
@@ -228,7 +228,7 @@ def run_scheduler():
         'cron',
         year="*",
         month="*",
-        day="0-4",
+        day_of_week="0-4",
         hour=7,
         minute=0,
         second=0
