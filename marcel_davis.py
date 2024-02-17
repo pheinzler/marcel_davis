@@ -42,20 +42,24 @@ def download_hsma():
     match = soup.find(class_='speiseplan-table')
 
     menu = ""
-    for row in match:
-        if not isinstance(row, bs4.element.NavigableString):
-            cells = row.find_all("td")
-            del cells[-2]
-            for cell in cells:
-                # log.info(cell)
-                stri = cell.get_text()
-                result = re.sub(r'[\t\n]+', '', stri)
-                result = re.sub(r'\€Stück|€Portion|€pro100g', '€', result)
-                menu += result + "\n"
-            menu += "\n"
-    if not menu:
+    if match is not None:
+        for row in match:
+            if not isinstance(row, bs4.element.NavigableString):
+                cells = row.find_all("td")
+                del cells[-2]
+                for cell in cells:
+                    # log.info(cell)
+                    stri = cell.get_text()
+                    result = re.sub(r'[\t\n]+', '', stri)
+                    result = re.sub(r'\€Stück|€Portion|€pro100g', '€', result)
+                    menu += result + "\n"
+                menu += "\n"
+        curr_day = datetime.today().strftime("%A")
+        menu = curr_day + "\n\n" + curr_day
+    else:
         menu = "Hochschulmensa hat zu 💩"
 
+        
     with open(HSMA_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menu)
 
@@ -64,17 +68,12 @@ def download_hsma_week():
     with requests.get("https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim-view-week.html", timeout=5) as url:
         soup = BeautifulSoup(url.content)
     match = soup.find_all(class_='active1')
-    data = parse_week(match)
-    menu = "".join(data)
- #   menu = replace_paranthesis(menu)
-
-    if not match:
+    if match is not None:
+        data = parse_week(match)
+        menu = "".join(data)
+    else:
         menu = "Hochschulmensa hat zu 💩"
-
-    curr_day = datetime.today().strftime("%A")
-
-    menu = curr_day + "\n\n" + curr_day
-
+    
     with open(HSMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menu)
 
@@ -83,12 +82,10 @@ def download_unima_week():
     with requests.get("https://www.stw-ma.de/men%C3%BCplan_schlossmensa-view-week.html", timeout=5) as url:
         soup = BeautifulSoup(url.content)
     match = soup.find_all(class_='active1')
-    data = parse_week(match)
-
-    menu = "".join(data)
-  #  menu = replace_paranthesis(menu)
-
-    if not match:
+    if match is not None:
+        data = parse_week(match)
+        menu = "".join(data)
+    else:
         menu = "Unimensa hat zu 💩"
 
     with open(UNIMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
