@@ -55,7 +55,7 @@ def download_hsma():
                     menu += result + "\n"
                 menu += "\n"
         curr_day = datetime.today().strftime("%A")
-        menu = curr_day + "\n\n" + curr_day
+        menu = curr_day + "\n\n" + menu
     else:
         menu = "Hochschulmensa hat zu 💩"
 
