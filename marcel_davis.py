@@ -57,7 +57,7 @@ def download_hsma():
         curr_day = datetime.today().strftime("%A")
         menu = curr_day + "\n\n" + menu
     else:
-        menu = "Hochschulmensa hat zu 💩"
+        menu = "Es konnte kein Menü gefunden werden."
 
         
     with open(HSMA_FILENAME, 'w', encoding='utf-8') as file:
@@ -72,7 +72,7 @@ def download_hsma_week():
         data = parse_week(match)
         menu = "".join(data)
     else:
-        menu = "Hochschulmensa hat zu 💩"
+        menu = "Es konnte kein Menü gefunden werden."
     
     with open(HSMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menu)
@@ -219,7 +219,7 @@ def run_scheduler():
         year="*",
         month="*",
         day_of_week="0-4",
-        hour=4,
+        hour="*/30",
         minute=0,
         second=0
     )
