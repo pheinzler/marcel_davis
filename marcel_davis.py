@@ -219,8 +219,8 @@ def run_scheduler():
         year="*",
         month="*",
         day_of_week="0-4",
-        hour="*/30",
-        minute=0,
+        hour="*",
+        minute="*/30",
         second=0
     )
     sched.add_job(
