@@ -229,7 +229,7 @@ def run_scheduler():
         year="*",
         month="*",
         day_of_week="0-4",
-        hour=7,
+        hour=9,
         minute=0,
         second=0
     )
