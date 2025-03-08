@@ -3,8 +3,9 @@ import logging
 import requests
 import bs4
 import re
+import os
+from dotenv import load_dotenv
 from bs4 import BeautifulSoup
-from tgbot_config import API_KEY
 from telebot import TeleBot, types
 from pathlib import Path
 from datetime import datetime
@@ -19,6 +20,8 @@ HSMA_FILENAME = "hsma_menu.txt"
 UNIMA_WEEK_FILENAME = "unima_week_menu.txt"
 ABO_FILENAME = "abos.txt"
 
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
 bot = TeleBot(API_KEY)
 
 
