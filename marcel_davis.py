@@ -22,8 +22,18 @@ ABO_FILENAME = "abos.txt"
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
+
 bot = TeleBot(API_KEY)
 
+CANTEEN_ID_THM=289
+
+def parse_menue(data)->dict:
+    menues = {}
+    # loop through json data and return dict of tpye {"menue category":"{meal} - {price}"}
+    for i in range(len(data)):
+        menue = f"{data[0]['name']} - {data[1]['prices']['students']}€"
+        menues[data[i]['category']] = menue
+    return menues
 
 def parse_week(match):
     data = [ele.text for ele in match]
@@ -99,7 +109,6 @@ def create_abos():
     abos = Path(ABO_FILENAME)
     abos.touch(exist_ok=True)
 
-
 def cache_all_menus():
     "caches all menus as files"
     log.info("caching menus")
@@ -128,11 +137,31 @@ def replace_paranthesis(stri):
 
 @bot.message_handler(commands=['mensa'])
 def mensa(message):
+    """return todays mensa menu"""
     log.info("mensa was called")
-    with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
-        menu = file.read()
-    bot.reply_to(message, menu, parse_mode='Markdown')
+    # Get the current date and format as yyyy-mm-dd
+    date:datetime = datetime.now()
+    date = date.strftime('%Y-%m-%d')
 
+    # request menue from open mensa api
+    url=f"https://openmensa.org/api/v2/canteens/289/days/{date}/meals"
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        return_message = "Nichts gefunden"
+        log.error(f"request for [mensa today] failed. status code: {response.status_code}")
+        bot.reply_to(message, return_message, parse_mode='Markdown')
+        return
+    data = response.json()
+    if date is None:
+        return_message = "Hochschulmensa hat zu 💩"
+        bot.reply_to(message, return_message, parse_mode='Markdown')
+        return
+    today_menues = parse_menue(data)
+    return_message = f"{date.strftime("%A")}\n\n"
+    for menue in today_menues:
+        return_message += f"{menue}\n{today_menues[menue]}\n\n"
+    bot.reply_to(message, return_message)
 
 @bot.message_handler(commands=['mensa_week'])
 def mensa_week(message):
