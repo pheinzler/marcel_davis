@@ -15,7 +15,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from systemd.journal import JournalHandler
 
-# get config
 #open yaml config and get config data
 with open('config.yml', 'r') as file:
     conf = yaml.safe_load(file)
@@ -36,6 +35,7 @@ API_KEY = os.getenv("API_KEY")
 bot = TeleBot(API_KEY)
 
 def parse_menue(data)->dict:
+    """parse the json menue of one day"""
     menues = {}
     # loop through json data and return dict of tpye {"menue category":"{meal} - {price}"}
     for i in range(len(data)):
@@ -129,7 +129,7 @@ def mensa(message):
 
 @bot.message_handler(commands=['mensa_week'])
 def mensa_week(message):
-    """return todays mensa menu"""
+    """return this weeks thm mensa menu"""
     log.info("mensa_week was called")
     # Open the file and read its contents
     with open(THM_WEEK_FILENAME, 'r') as file:
@@ -138,19 +138,12 @@ def mensa_week(message):
 
 @bot.message_handler(commands=['unimensa_week'])
 def uni_mensa(message):
-    log.info("unimensa was called")
-    with open(UNIMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
-        menu = file.read()
-
-    menu_days = menu.split("*")
-
-    menu_days = menu_days[1:]
-
-    menu_days = [menu_days[i] + menu_days[i + 1]
-                 for i in range(0, len(menu_days) - 1, 2)]
-
-    for day in menu_days:
-        bot.reply_to(message, day, parse_mode="Markdown")
+    """return this weeks uni mensa menu"""
+    log.info("unimensa_week was called")
+    # Open the file and read its contents
+    with open(UNIMA_WEEK_FILENAME, 'r') as file:
+        menue_cache = file.read()
+    bot.reply_to(message, menue_cache)
 
 @bot.message_handler(commands=['abo'])
 def abo(message):
