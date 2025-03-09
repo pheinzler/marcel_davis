@@ -56,7 +56,7 @@ def parse_week(match):
 
 
 def download_hsma():
-    log.info("caching mensa menue")
+    log.info("caching mensa menue of today")
     # Get the current date and format as yyyy-mm-dd
     date:datetime = datetime.now()
     date = date.strftime('%Y-%m-%d')
@@ -66,18 +66,21 @@ def download_hsma():
     response = requests.get(url)
 
     menue_cache = ""
+    read_menue:bool = True
     if response.status_code != 200:
         menue_cache = "Nichts gefunden"
         log.error(f"request for [mensa today] failed. status code: {response.status_code}")
-    
+        read_menue = False
     data = response.json()
     if date is None:
         menue_cache = "Hochschulmensa hat zu 💩"
-    today_menues = parse_menue(data)
-    menue_cache = f"{date.strftime("%A")}\n\n"
-    for menue in today_menues:
-        menue_cache += f"{menue}\n{today_menues[menue]}\n\n"
-
+        read_menue = False
+    # parse mensa menue only if valid data was sent
+    if read_menue:
+        today_menues = parse_menue(data)
+        menue_cache = f"{date.strftime("%A")}\n\n"
+        for menue in today_menues:
+            menue_cache += f"{menue}\n{today_menues[menue]}\n\n"
     with open(HSMA_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menue_cache)
 
