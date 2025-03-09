@@ -14,14 +14,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from systemd.journal import JournalHandler
 
 #open yaml config and get config data
-with open('config.yml', 'r') as file:
+with open('config.yaml', 'r') as file:
     conf = yaml.safe_load(file)
 
 TIMEOUT = conf["timeout"]
 
 THM_WEEK_FILENAME = conf["filename"]["thm_week"]
 THM_FILENAME = conf["filename"]["thm"]
-UNIMA_WEEK_FILENAME = conf["filename"]["unima_week_menu.txt"]
+UNIMA_WEEK_FILENAME = conf["filename"]["uma_week"]
 ABO_FILENAME = conf["filename"]["abo"]
 
 CANTEEN_ID_THM = conf["canteens"]["thm"]
