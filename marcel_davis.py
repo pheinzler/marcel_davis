@@ -3,7 +3,7 @@ import logging
 import requests
 import os
 import yaml
-import datetime
+from datetime import datetime, timedelta
 import time
 from dotenv import load_dotenv
 from telebot import TeleBot, types
@@ -34,7 +34,7 @@ bot = TeleBot(API_KEY)
 
 #this dict is used to download the week menues. For workdays it calculates back to the start of the current week. for weekend days it forwards to the next weeks menue
 days_to_sunday = {"Monday" : -1, "Tuesday" : -2, "Wednesday" : -3, "Thursday" : -4, "Friday" : -5, "Saturday" : 1, "Sunday" : 0}
-
+weekday_dict = {"Monday" : "Montag", "Tuesday" : "Dienstag", "Wednesday" : "Mittwoch", "Thursday" : "Donnerstag", "Friday" : "Freitag", "Saturday" : "Samstag", "Sunday" : "Sonntag"}
 
 def parse_menue(data)->dict:
     """parse the json menue of a single day"""
@@ -44,11 +44,6 @@ def parse_menue(data)->dict:
         menue = f"{data[i]['name']} - {data[i]['prices']['students']}€"
         menues[data[i]['category']] = menue
     return menues
-
-
-def get_date_offset(datestr:str) -> int:
-    # TODO: check in which fomrat datestr is given (GER/EN?, Upper/Lower Case?)
-    return days_to_sunday[datestr]
 
 
 def download_thm():
@@ -89,39 +84,40 @@ def download_week(canteen_id:int, filename:str):
     # Find start of this weeks menue date and format as yyyy-mm-dd. On weekends get next weeks menue
     date = datetime.now()
     datestr = date.strftime("%A")
-    offset = get_date_offset(datestr)
-    date = datetime.now() + datetime.timedelta(offset) # sunday of next weeks menue
+    offset = days_to_sunday[datestr]
+    date = datetime.now() + timedelta(offset) # sunday of weeks menue
     menue_week = {}
     # loop over week
     for i in range(1,6):
-        curr_date = date + datetime.timedelta(i)
-        curr_date = date.strftime('%Y-%m-%d')
+        curr_date = date + timedelta(i)
+        curr_date_request_fromat = curr_date.strftime('%Y-%m-%d')
         # request menue from open mensa api
-        url=f"https://openmensa.org/api/v2/canteens/{canteen_id}/days/{curr_date}/meals"
+        url=f"https://openmensa.org/api/v2/canteens/{canteen_id}/days/{curr_date_request_fromat}/meals"
         response = requests.get(url)
-        time.sleep(5)
+        time.sleep(TIMEOUT)
         if response.status_code != 200:
-            menue_week[curr_date.strftime("%A")] = "Nichts gefunden"
+            menue_week[curr_date.strftime("%A")] = {"ahhhh":"Nichts gefunden"}
             log.error(f"request for {curr_date}  in download_thm_week failed. status code: {response.status_code}")
             continue
         data = response.json()
-        if date is None:
-            menue_week[curr_date.strftime("%A")] = "Hochschulmensa hat zu 💩"
+        if data is None:
+            menue_week[curr_date.strftime("%A")] = {"ahhh":"Hochschulmensa hat zu 💩"}
             continue
         #parse over the menue of the current day
         menue_week[curr_date.strftime("%A")] = parse_menue(data)
 
-    menue_date = f"Menue from Monday {(date+datetime.timedelta(1)).strftime("%A")} to Friday {(date+datetime.timedelta(5)).strftime("%A")}\n"
-    with open(THM_WEEK_FILENAME, 'w', encoding='utf-8') as file:
+    menue_from = (date+timedelta(1)).strftime("%d.%m.%Y")
+    menue_to = (date+timedelta(5)).strftime("%d.%m.%Y")
+    menue_date = f"Menue from Monday {menue_from} to Friday {menue_to}\n"
+    with open(filename, 'w', encoding='utf-8') as file:
         #write the date of this weeks menue
-        file.write(menue_date)
+        file.write(f"{menue_date}")
         for day in menue_week:
-            menue_cache = ""
-            # write the weekday
-            file.write(day)
+            file.write(f"\n{weekday_dict[day]}\n")
             # loop over all menues of this day and write them to the cache
             for menue in menue_week[day]:
-                menue_cache += f"{menue}\n{menue_week[day][menue]}\n\n"
+                menue_cache = ""
+                menue_cache += f"{menue}\n{menue_week[day][menue]}\n"
                 file.write(menue_cache)
 
 
