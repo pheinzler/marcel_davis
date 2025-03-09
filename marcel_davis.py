@@ -75,7 +75,9 @@ def download_thm():
     # parse mensa menue only if valid data was sent
     if read_menue:
         today_menues = parse_menue(data)
-        menue_cache = f"{date.strftime("%A")} - {date}\n\n"
+        chache_datestr = datetime.now().strftime("%A")
+        cache_date = datetime.now().strftime('%d.%m.%Y')
+        menue_cache = f"{chache_datestr} {cache_date}\n\n"
         for menue in today_menues:
             menue_cache += f"{menue}\n{today_menues[menue]}\n\n"
     with open(THM_FILENAME, 'w', encoding='utf-8') as file:
