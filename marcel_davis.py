@@ -41,7 +41,7 @@ def parse_menue(data)->dict:
     menues = {}
     # loop through json data and return dict of tpye {"menue category":"{meal} - {price}"}
     for i in range(len(data)):
-        menue = f"{data[0]['name']} - {data[1]['prices']['students']}€"
+        menue = f"{data[i]['name']} - {data[i]['prices']['students']}€"
         menues[data[i]['category']] = menue
     return menues
 
