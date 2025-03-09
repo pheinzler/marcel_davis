@@ -43,19 +43,8 @@ def parse_menue(data)->dict:
         menues[data[i]['category']] = menue
     return menues
 
-def parse_week(match):
-    data = [ele.text for ele in match]
-    data = [ele.replace("\t", '').replace("\n\n\n", "\n\n") for ele in data]
-    data = [ele.replace("Montag", "*Montag*") for ele in data]
-    data = [ele.replace("Dienstag", "*Dienstag*") for ele in data]
-    data = [ele.replace("Mittwoch", "*Mittwoch*") for ele in data]
-    data = [ele.replace("Donnerstag", "*Donnerstag*") for ele in data]
-    data = [ele.replace("Freitag", "*Freitag*") for ele in data]
-    data = [ele.replace("`", "'") for ele in data]
-    return data
-
-
 def download_hsma():
+    """cache the mensa menue of today and write to .txt file"""
     log.info("caching mensa menue of today")
     # Get the current date and format as yyyy-mm-dd
     date:datetime = datetime.now()
@@ -84,7 +73,6 @@ def download_hsma():
     with open(HSMA_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menue_cache)
 
-
 def download_hsma_week():
     with requests.get("https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim-view-week.html", timeout=5) as url:
         soup = BeautifulSoup(url.content)
@@ -98,7 +86,6 @@ def download_hsma_week():
     with open(HSMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menu)
 
-
 def download_unima_week():
     with requests.get("https://www.stw-ma.de/men%C3%BCplan_schlossmensa-view-week.html", timeout=5) as url:
         soup = BeautifulSoup(url.content)
@@ -111,7 +98,6 @@ def download_unima_week():
 
     with open(UNIMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menu)
-
 
 def create_abos():
     abos = Path(ABO_FILENAME)
@@ -131,17 +117,6 @@ def start(message):
     welcome_string = """Willkommen beim inoffiziellen Mensabot
 """
     bot.reply_to(message, welcome_string)
-
-
-def replace_paranthesis(stri):
-    para_auf = [i for i in range(len(stri)) if stri[i] == "("]
-    para_zu = [i for i in range(len(stri)) if stri[i] == ")"]
-    para = list(zip(para_auf, para_zu))
-    words = [stri[pair[0] - 1:pair[1] + 1] for pair in para]
-    for word in words:
-        stri = stri.replace(word, " ")
-    return stri
-
 
 @bot.message_handler(commands=['mensa'])
 def mensa(message):
@@ -184,7 +159,6 @@ def uni_mensa(message):
     for day in menu_days:
         bot.reply_to(message, day, parse_mode="Markdown")
 
-
 @bot.message_handler(commands=['abo'])
 def abo(message):
     all_abos = []
@@ -222,13 +196,11 @@ def send_all_abos():
             for chat_id in all_abos:
                 bot.send_message(chat_id, menu)
 
-
 def bot_poll():
     # pass
     while True:
         log.info("polling msgs")
         bot.infinity_polling()
-
 
 def run_scheduler():
     log.info("running scheduler")
