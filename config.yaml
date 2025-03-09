@@ -1,0 +1,9 @@
+canteens:
+  thm: 289
+  uma: 123
+timeout: 5
+filename:
+  thm_week: "hsma_week_menu.txt"
+  thm: "hsma_menu.txt"
+  uma_week: "unima_week_menu.txt"
+  abo: "abos.txt"
