@@ -4,6 +4,7 @@ import requests
 import bs4
 import re
 import os
+import yaml
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from telebot import TeleBot, types
@@ -14,18 +15,25 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from systemd.journal import JournalHandler
 
-TIMEOUT = 5
-HSMA_WEEK_FILENAME = "hsma_week_menu.txt"
-HSMA_FILENAME = "hsma_menu.txt"
-UNIMA_WEEK_FILENAME = "unima_week_menu.txt"
-ABO_FILENAME = "abos.txt"
+# get config
+#open yaml config and get config data
+with open('config.yml', 'r') as file:
+    conf = yaml.safe_load(file)
 
+TIMEOUT = conf["timeout"]
+
+HSMA_WEEK_FILENAME = conf["filename"]["thm_week"]
+HSMA_FILENAME = conf["filename"]["thm"]
+UNIMA_WEEK_FILENAME = conf["filename"]["unima_week_menu.txt"]
+ABO_FILENAME = conf["filename"]["abo"]
+
+CANTEEN_ID_THM = conf["canteens"]["thm"]
+CANTEEN_ID_UMA = conf["canteens"]["uma"]
+
+# get token and initialize bot
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
-
 bot = TeleBot(API_KEY)
-
-CANTEEN_ID_THM=289
 
 def parse_menue(data)->dict:
     menues = {}
@@ -48,33 +56,30 @@ def parse_week(match):
 
 
 def download_hsma():
-    URL = "https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim.html"
+    log.info("caching mensa menue")
+    # Get the current date and format as yyyy-mm-dd
+    date:datetime = datetime.now()
+    date = date.strftime('%Y-%m-%d')
 
-    with requests.get(URL, timeout=5) as url:
-        soup = BeautifulSoup(url.content, features="lxml")
-    match = soup.find(class_='speiseplan-table')
+    # request menue from open mensa api
+    url=f"https://openmensa.org/api/v2/canteens/{CANTEEN_ID_THM}/days/{date}/meals"
+    response = requests.get(url)
 
-    menu = ""
-    if match is not None:
-        for row in match:
-            if not isinstance(row, bs4.element.NavigableString):
-                cells = row.find_all("td")
-                del cells[-2]
-                for cell in cells:
-                    # log.info(cell)
-                    stri = cell.get_text()
-                    result = re.sub(r'[\t\n]+', '', stri)
-                    result = re.sub(r'\€Stück|€Portion|€pro100g', '€', result)
-                    menu += result + "\n"
-                menu += "\n"
-        curr_day = datetime.today().strftime("%A")
-        menu = curr_day + "\n\n" + menu
-    else:
-        menu = "Es konnte kein Menü gefunden werden."
+    menue_cache = ""
+    if response.status_code != 200:
+        menue_cache = "Nichts gefunden"
+        log.error(f"request for [mensa today] failed. status code: {response.status_code}")
+    
+    data = response.json()
+    if date is None:
+        menue_cache = "Hochschulmensa hat zu 💩"
+    today_menues = parse_menue(data)
+    menue_cache = f"{date.strftime("%A")}\n\n"
+    for menue in today_menues:
+        menue_cache += f"{menue}\n{today_menues[menue]}\n\n"
 
-        
     with open(HSMA_FILENAME, 'w', encoding='utf-8') as file:
-        file.write(menu)
+        file.write(menue_cache)
 
 
 def download_hsma_week():
@@ -139,29 +144,10 @@ def replace_paranthesis(stri):
 def mensa(message):
     """return todays mensa menu"""
     log.info("mensa was called")
-    # Get the current date and format as yyyy-mm-dd
-    date:datetime = datetime.now()
-    date = date.strftime('%Y-%m-%d')
-
-    # request menue from open mensa api
-    url=f"https://openmensa.org/api/v2/canteens/289/days/{date}/meals"
-    response = requests.get(url)
-
-    if response.status_code != 200:
-        return_message = "Nichts gefunden"
-        log.error(f"request for [mensa today] failed. status code: {response.status_code}")
-        bot.reply_to(message, return_message, parse_mode='Markdown')
-        return
-    data = response.json()
-    if date is None:
-        return_message = "Hochschulmensa hat zu 💩"
-        bot.reply_to(message, return_message, parse_mode='Markdown')
-        return
-    today_menues = parse_menue(data)
-    return_message = f"{date.strftime("%A")}\n\n"
-    for menue in today_menues:
-        return_message += f"{menue}\n{today_menues[menue]}\n\n"
-    bot.reply_to(message, return_message)
+    # Open the file and read its contents
+    with open(HSMA_FILENAME, 'r') as file:
+        menue_cache = file.read()
+    bot.reply_to(message, menue_cache)
 
 @bot.message_handler(commands=['mensa_week'])
 def mensa_week(message):
