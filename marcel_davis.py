@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 import logging
 import requests
-import bs4
-import re
 import os
 import yaml
 import datetime
 import time
 from dotenv import load_dotenv
-from bs4 import BeautifulSoup
 from telebot import TeleBot, types
 from pathlib import Path
 
