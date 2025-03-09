@@ -132,7 +132,6 @@ def cache_all_menus():
     download_week(CANTEEN_ID_THM, THM_WEEK_FILENAME)
     download_thm()
     download_week(CANTEEN_ID_UMA, UNIMA_WEEK_FILENAME)
-    # download_test()
 
 
 @bot.message_handler(commands=["start", "help"])
