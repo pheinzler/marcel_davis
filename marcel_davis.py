@@ -5,11 +5,12 @@ import bs4
 import re
 import os
 import yaml
+import datetime
+import time
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from telebot import TeleBot, types
 from pathlib import Path
-from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -34,8 +35,12 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 bot = TeleBot(API_KEY)
 
+#this dict is used to download the week menues. For workdays it calculates back to the start of the current week. for weekend days it forwards to the next weeks menue
+days_to_sunday = {"Monday" : -1, "Tuesday" : -2, "Wednesday" : -3, "Thursday" : -4, "Friday" : -5, "Saturday" : 1, "Sunday" : 0}
+
+
 def parse_menue(data)->dict:
-    """parse the json menue of one day"""
+    """parse the json menue of a single day"""
     menues = {}
     # loop through json data and return dict of tpye {"menue category":"{meal} - {price}"}
     for i in range(len(data)):
@@ -43,7 +48,13 @@ def parse_menue(data)->dict:
         menues[data[i]['category']] = menue
     return menues
 
-def download_hsma():
+
+def get_date_offset(datestr:str) -> int:
+    # TODO: check in which fomrat datestr is given (GER/EN?, Upper/Lower Case?)
+    return days_to_sunday[datestr]
+
+
+def download_thm():
     """cache the mensa menue of today and write to .txt file"""
     log.info("caching mensa menue of today")
     # Get the current date and format as yyyy-mm-dd
@@ -67,48 +78,65 @@ def download_hsma():
     # parse mensa menue only if valid data was sent
     if read_menue:
         today_menues = parse_menue(data)
-        menue_cache = f"{date.strftime("%A")}\n\n"
+        menue_cache = f"{date.strftime("%A")} - {date}\n\n"
         for menue in today_menues:
             menue_cache += f"{menue}\n{today_menues[menue]}\n\n"
     with open(THM_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menue_cache)
 
-def download_hsma_week():
-    with requests.get("https://www.stw-ma.de/Essen+_+Trinken/Speisepl%C3%A4ne/Hochschule+Mannheim-view-week.html", timeout=5) as url:
-        soup = BeautifulSoup(url.content)
-    match = soup.find_all(class_='active1')
-    if match is not None:
-        data = parse_week(match)
-        menu = "".join(data)
-    else:
-        menu = "Es konnte kein Menü gefunden werden."
-    
+
+def download_week(canteen_id:int, filename:str):
+    """cache the menue of this week of the canteen with the given id and write to .txt file"""
+    # Find start of this weeks menue date and format as yyyy-mm-dd. On weekends get next weeks menue
+    date = datetime.now()
+    datestr = date.strftime("%A")
+    offset = get_date_offset(datestr)
+    date = datetime.now() + datetime.timedelta(offset) # sunday of next weeks menue
+    menue_week = {}
+    # loop over week
+    for i in range(1,6):
+        curr_date = date + datetime.timedelta(i)
+        curr_date = date.strftime('%Y-%m-%d')
+        # request menue from open mensa api
+        url=f"https://openmensa.org/api/v2/canteens/{canteen_id}/days/{curr_date}/meals"
+        response = requests.get(url)
+        time.sleep(5)
+        if response.status_code != 200:
+            menue_week[curr_date.strftime("%A")] = "Nichts gefunden"
+            log.error(f"request for {curr_date}  in download_thm_week failed. status code: {response.status_code}")
+            continue
+        data = response.json()
+        if date is None:
+            menue_week[curr_date.strftime("%A")] = "Hochschulmensa hat zu 💩"
+            continue
+        #parse over the menue of the current day
+        menue_week[curr_date.strftime("%A")] = parse_menue(data)
+
+    menue_date = f"Menue from Monday {(date+datetime.timedelta(1)).strftime("%A")} to Friday {(date+datetime.timedelta(5)).strftime("%A")}\n"
     with open(THM_WEEK_FILENAME, 'w', encoding='utf-8') as file:
-        file.write(menu)
+        #write the date of this weeks menue
+        file.write(menue_date)
+        for day in menue_week:
+            menue_cache = ""
+            # write the weekday
+            file.write(day)
+            # loop over all menues of this day and write them to the cache
+            for menue in menue_week[day]:
+                menue_cache += f"{menue}\n{menue_week[day][menue]}\n\n"
+                file.write(menue_cache)
 
-def download_unima_week():
-    with requests.get("https://www.stw-ma.de/men%C3%BCplan_schlossmensa-view-week.html", timeout=5) as url:
-        soup = BeautifulSoup(url.content)
-    match = soup.find_all(class_='active1')
-    if match is not None:
-        data = parse_week(match)
-        menu = "".join(data)
-    else:
-        menu = "Unimensa hat zu 💩"
-
-    with open(UNIMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
-        file.write(menu)
 
 def create_abos():
     abos = Path(ABO_FILENAME)
     abos.touch(exist_ok=True)
 
+
 def cache_all_menus():
     "caches all menus as files"
     log.info("caching menus")
-    download_hsma_week()
-    download_hsma()
-    download_unima_week()
+    download_week(CANTEEN_ID_THM, THM_WEEK_FILENAME)
+    download_thm()
+    download_week(CANTEEN_ID_UMA, UNIMA_WEEK_FILENAME)
     # download_test()
 
 
@@ -117,6 +145,7 @@ def start(message):
     welcome_string = """Willkommen beim inoffiziellen Mensabot
 """
     bot.reply_to(message, welcome_string)
+
 
 @bot.message_handler(commands=['mensa'])
 def mensa(message):
@@ -127,6 +156,7 @@ def mensa(message):
         menue_cache = file.read()
     bot.reply_to(message, menue_cache)
 
+
 @bot.message_handler(commands=['mensa_week'])
 def mensa_week(message):
     """return this weeks thm mensa menu"""
@@ -136,6 +166,7 @@ def mensa_week(message):
         menue_cache = file.read()
     bot.reply_to(message, menue_cache)
 
+
 @bot.message_handler(commands=['unimensa_week'])
 def uni_mensa(message):
     """return this weeks uni mensa menu"""
@@ -144,6 +175,7 @@ def uni_mensa(message):
     with open(UNIMA_WEEK_FILENAME, 'r') as file:
         menue_cache = file.read()
     bot.reply_to(message, menue_cache)
+
 
 @bot.message_handler(commands=['abo'])
 def abo(message):
@@ -170,6 +202,7 @@ def abo(message):
         for abo in all_abos:
             abofile.write("%s\n" % abo)
 
+
 def send_all_abos():
     all_abos = []
     with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
@@ -182,11 +215,13 @@ def send_all_abos():
             for chat_id in all_abos:
                 bot.send_message(chat_id, menu)
 
+
 def bot_poll():
     # pass
     while True:
         log.info("polling msgs")
         bot.infinity_polling()
+
 
 def run_scheduler():
     log.info("running scheduler")
