@@ -22,8 +22,8 @@ with open('config.yml', 'r') as file:
 
 TIMEOUT = conf["timeout"]
 
-HSMA_WEEK_FILENAME = conf["filename"]["thm_week"]
-HSMA_FILENAME = conf["filename"]["thm"]
+THM_WEEK_FILENAME = conf["filename"]["thm_week"]
+THM_FILENAME = conf["filename"]["thm"]
 UNIMA_WEEK_FILENAME = conf["filename"]["unima_week_menu.txt"]
 ABO_FILENAME = conf["filename"]["abo"]
 
@@ -70,7 +70,7 @@ def download_hsma():
         menue_cache = f"{date.strftime("%A")}\n\n"
         for menue in today_menues:
             menue_cache += f"{menue}\n{today_menues[menue]}\n\n"
-    with open(HSMA_FILENAME, 'w', encoding='utf-8') as file:
+    with open(THM_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menue_cache)
 
 def download_hsma_week():
@@ -83,7 +83,7 @@ def download_hsma_week():
     else:
         menu = "Es konnte kein Menü gefunden werden."
     
-    with open(HSMA_WEEK_FILENAME, 'w', encoding='utf-8') as file:
+    with open(THM_WEEK_FILENAME, 'w', encoding='utf-8') as file:
         file.write(menu)
 
 def download_unima_week():
@@ -123,25 +123,18 @@ def mensa(message):
     """return todays mensa menu"""
     log.info("mensa was called")
     # Open the file and read its contents
-    with open(HSMA_FILENAME, 'r') as file:
+    with open(THM_FILENAME, 'r') as file:
         menue_cache = file.read()
     bot.reply_to(message, menue_cache)
 
 @bot.message_handler(commands=['mensa_week'])
 def mensa_week(message):
-    log.info("mensaweek was called")
-    with open(HSMA_WEEK_FILENAME, 'r', encoding="utf-8") as file:
-        menu = file.read()
-    menu_days = menu.split("*")
-
-    menu_days = menu_days[1:]
-
-    menu_days = [menu_days[i] + menu_days[i + 1]
-                 for i in range(0, len(menu_days) - 1, 2)]
-
-    for day in menu_days:
-        bot.reply_to(message, day, parse_mode="Markdown")
-
+    """return todays mensa menu"""
+    log.info("mensa_week was called")
+    # Open the file and read its contents
+    with open(THM_WEEK_FILENAME, 'r') as file:
+        menue_cache = file.read()
+    bot.reply_to(message, menue_cache)
 
 @bot.message_handler(commands=['unimensa_week'])
 def uni_mensa(message):
@@ -190,7 +183,7 @@ def send_all_abos():
         for line in abofile:
             all_abos.append(line)
     log.info(f"sending abos. currently there are {len(all_abos)} abos")
-    with open(HSMA_FILENAME, 'r', encoding="utf-8") as file:
+    with open(THM_FILENAME, 'r', encoding="utf-8") as file:
         menu = file.read()
         if len(all_abos) > 0:
             for chat_id in all_abos:
