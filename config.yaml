@@ -7,3 +7,8 @@ filename:
   thm: "thm_menu.txt"
   uma_week: "unima_week_menu.txt"
   abo: "abos.txt"
+messages:
+  start: "Willkommen beim inoffiziellen Mensabot"
+  help: "/mensa - heutiges Mensa Menü an der Hochschule\n/thm_week - Mensa Menü an der Hochschule für diese Woche\n/uni_week - Mensa Menü an der Uni für diese Woche\n/abo - (de)abboniere den Mensa bot um täglich das Mensamenü der THM zu bekommen"
+  abo: "du wirst jetzt täglich Infos zur mensa erhalten"
+  deabo: "du wirst jetzt täglich **keine** Infos zur mensa erhalten"

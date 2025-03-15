@@ -6,12 +6,17 @@ import yaml
 from datetime import datetime, timedelta
 import time
 from dotenv import load_dotenv
-from telebot import TeleBot, types
+from telegram import Update, Bot
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-#from systemd.journal import JournalHandler
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+log = logging.getLogger("marcel-davis")
 
 #open yaml config and get config data
 with open('config.yaml', 'r') as file:
@@ -30,7 +35,6 @@ CANTEEN_ID_UMA = conf["canteens"]["uma"]
 # get token and initialize bot
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
-bot = TeleBot(API_KEY)
 
 #this dict is used to download the week menues. For workdays it calculates back to the start of the current week. for weekend days it forwards to the next weeks menue
 days_to_sunday = {"Monday" : -1, "Tuesday" : -2, "Wednesday" : -3, "Thursday" : -4, "Friday" : -5, "Saturday" : 1, "Sunday" : 0}
@@ -148,63 +152,58 @@ def cache_all_menus():
     download_thm()
     download_week(CANTEEN_ID_UMA, UNIMA_WEEK_FILENAME)
 
-
-@bot.message_handler(commands=["start", "help"])
-def start(message):
-    welcome_string = """Willkommen beim inoffiziellen Mensabot
-"""
-    bot.reply_to(message, welcome_string)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return_message = conf["messages"]["start"]
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=return_message)
 
 
-@bot.message_handler(commands=['mensa'])
-def mensa(message):
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return_message = conf["messages"]["help"]
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=return_message)
+
+
+async def mensa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """return todays mensa menu"""
     log.info("mensa was called")
     # Open the file and read its contents
     with open(THM_FILENAME, 'r') as file:
         menue_cache = file.read()
-    bot.reply_to(message, menue_cache)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
 
 
-@bot.message_handler(commands=['mensa_week'])
-def mensa_week(message):
+async def thm_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """return this weeks thm mensa menu"""
-    log.info("mensa_week was called")
+    log.info("thm_week was called")
     # Open the file and read its contents
     with open(THM_WEEK_FILENAME, 'r') as file:
         menue_cache = file.read()
-    bot.reply_to(message, menue_cache)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
 
 
-@bot.message_handler(commands=['unimensa_week'])
-def uni_mensa(message):
+async def uni_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """return this weeks uni mensa menu"""
-    log.info("unimensa_week was called")
+    log.info("uni_week was called")
     # Open the file and read its contents
     with open(UNIMA_WEEK_FILENAME, 'r') as file:
         menue_cache = file.read()
-    bot.reply_to(message, menue_cache)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
 
 
-@bot.message_handler(commands=['abo'])
-def abo(message):
+async def abo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     all_abos = []
-    chatid = str(message.chat.id)
+    chatid = update.effective_chat.id
     with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
         for line in abofile:
             all_abos.append(line.replace("\n",""))
     if chatid not in all_abos:
         all_abos.append(chatid)
-        bot.reply_to(
-            message,
-            "du wirst jetzt täglich Infos zur mensa erhalten")
+        message = conf["messages"]["abo"]
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
         log.info(f"added chat with chatid {chatid}")
     else:
         all_abos.remove(chatid)
-        bot.reply_to(
-            message,
-            "du wirst jetzt täglich **keine** Infos zur mensa erhalten",
-            parse_mode="markdown")
+        message = conf["messages"]["deabo"]
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
         log.info(f"removed chat with chatid {chatid}")
 
     with open(ABO_FILENAME, 'w', encoding="utf-8") as abofile:
@@ -213,6 +212,7 @@ def abo(message):
 
 
 def send_all_abos():
+    bot = Bot(token=API_KEY)
     all_abos = []
     with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
         for line in abofile:
@@ -222,14 +222,7 @@ def send_all_abos():
         menu = file.read()
         if len(all_abos) > 0:
             for chat_id in all_abos:
-                bot.send_message(chat_id, menu)
-
-
-def bot_poll():
-    # pass
-    while True:
-        log.info("polling msgs")
-        bot.infinity_polling()
+                bot.send_message(chat_id=chat_id, text=menu)
 
 
 def run_scheduler():
@@ -259,23 +252,51 @@ def run_scheduler():
     sched.start()
 
 
-def set_options():
-    bot.set_my_commands([
-        types.BotCommand("/help", "Hilfe"),
-        types.BotCommand("/mensa", "Mensamenü des Tages"),
-        types.BotCommand("/mensa_week", "Mensamenü der Woche"),
-        types.BotCommand("/unimensa_week", "unimensamenu der woche"),
-        types.BotCommand("/abo", "(De)Abboniere den Täglichen Mensareport"),
-    ]
-    )
-
+async def set_commands(application):
+    # Set the bot commands
+    await application.bot.set_my_commands([
+        ("start", "Start"),
+        ("help", "Hilfe"),
+        ("mensa", "Mensamenü des Tages"),
+        ("thm_week", "Mensamenü der Woche"),
+        ("uni_week", "Unimensamenu der Woche"),
+        ("abo", "(De)Abboniere den Täglichen Mensareport")
+    ])
+    return
 
 def main():
-    log.info("running background tasks")
-    set_options()
-    run_scheduler()
-    bot_poll()
+    log.info("starting bot")
+    application = ApplicationBuilder().token(API_KEY).build()
 
+    start_handler = CommandHandler('start', start)
+    application.add_handler(start_handler)
+
+    help_handler = CommandHandler('help', help)
+    application.add_handler(help_handler)
+
+    mensa_handler = CommandHandler('mensa', mensa)
+    application.add_handler(mensa_handler)
+
+    abo_handler = CommandHandler('abo', abo)
+    application.add_handler(abo_handler)
+
+    thm_week_handler = CommandHandler('thm_week', thm_week)
+    application.add_handler(thm_week_handler)
+
+    uni_week_handler = CommandHandler('uni_week', uni_week)
+    application.add_handler(uni_week_handler)
+
+    log.info("caching all menues")
+    #cache_all_menus()
+    log.info("creating abos")
+    create_abos()
+    # Set the bot commands
+    log.info("set commands")
+    set_commands(application)
+    log.info("run scheduler")
+    run_scheduler()
+    log.info("start polling")
+    application.run_polling(poll_interval=2) # poll every 2 sec. default is .5 secs
 
 if __name__ == '__main__':
     log = logging.getLogger("marcel_davis")
