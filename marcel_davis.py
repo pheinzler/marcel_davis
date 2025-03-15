@@ -151,6 +151,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return_message = conf["messages"]["start"]
     await context.bot.send_message(chat_id=update.effective_chat.id, text=return_message)
 
+
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return_message = conf["messages"]["help"]
     await context.bot.send_message(chat_id=update.effective_chat.id, text=return_message)
@@ -167,18 +168,18 @@ async def mensa(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def thm_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """return this weeks thm mensa menu"""
-    log.info("mensa was called")
+    log.info("thm_week was called")
     # Open the file and read its contents
-    with open(THM_FILENAME, 'r') as file:
+    with open(THM_WEEK_FILENAME, 'r') as file:
         menue_cache = file.read()
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
 
 
 async def uni_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """return this weeks uni mensa menu"""
-    log.info("mensa was called")
+    log.info("uni_week was called")
     # Open the file and read its contents
-    with open(THM_FILENAME, 'r') as file:
+    with open(UNIMA_WEEK_FILENAME, 'r') as file:
         menue_cache = file.read()
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
 
@@ -281,7 +282,7 @@ def main():
     application.add_handler(uni_week_handler)
 
     log.info("caching all menues")
-    cache_all_menus()
+    #cache_all_menus()
     log.info("creating abos")
     create_abos()
     # Set the bot commands
