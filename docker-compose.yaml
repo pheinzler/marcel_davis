@@ -1,0 +1,5 @@
+services:
+  marcel-davis:
+    image: marcel-davis:0.9
+    container_name: marcel-davis
+    restart: unless-stopped
