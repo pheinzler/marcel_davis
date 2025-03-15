@@ -4,7 +4,7 @@ Marcel Davis ist der inoffizielle Mensabot der Hochschule Mannheim
 
 ## Setup
 
-Before running the application, the api token needs to be added to the environment. For this an environtment file can to be created.
+Before running the application, the api token needs to be added to the environment. For this an environment file (.env) can be used.
 
 ```.env
 API_KEY="api-key"
