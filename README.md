@@ -23,9 +23,3 @@ To run the bot as a docker container you need to first build the Image. For this
 - ```docker build -t marcel_davis:<tag> .```
 
 After this, with ```docker compose up -d``` the application can be started.
-
-## Open Tasks
-
-- fix abo method
-- add option for menue of next week
-- when current (not older than X mins) cache exists at startup do not cache
