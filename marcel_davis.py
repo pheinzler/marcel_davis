@@ -287,7 +287,7 @@ def main():
     application.add_handler(uni_week_handler)
 
     log.info("caching all menues")
-    #cache_all_menus()
+    cache_all_menus()
     log.info("creating abos")
     create_abos()
     # Set the bot commands
