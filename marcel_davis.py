@@ -11,7 +11,7 @@ from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from systemd.journal import JournalHandler
+#from systemd.journal import JournalHandler
 
 #open yaml config and get config data
 with open('config.yaml', 'r') as file:
@@ -48,7 +48,7 @@ def parse_menue(data)->dict:
 
 def download_thm():
     """cache the mensa menue of today and write to .txt file"""
-    log.info("caching mensa menue of today")
+    log.info("caching mensa menue of thm for today")
     # Get the current date and format as yyyy-mm-dd
     date:datetime = datetime.now()
     date = date.strftime('%Y-%m-%d')
@@ -63,8 +63,14 @@ def download_thm():
         menue_cache = "Nichts gefunden"
         log.error(f"request for [mensa today] failed. status code: {response.status_code}")
         read_menue = False
-    data = response.json()
-    if date is None:
+    try:
+        log.info(f"try reading response json")
+        data = response.json()
+        if data is None:
+            menue_cache = "Hochschulmensa hat zu 💩"
+            read_menue = False
+    except:
+        log.error(f"error reading reponse json - writing no menue to cache")
         menue_cache = "Hochschulmensa hat zu 💩"
         read_menue = False
     # parse mensa menue only if valid data was sent
@@ -82,6 +88,7 @@ def download_thm():
 def download_week(canteen_id:int, filename:str):
     """cache the menue of this week of the canteen with the given id and write to .txt file"""
     # Find start of this weeks menue date and format as yyyy-mm-dd. On weekends get next weeks menue
+    log.info(f"caching menue for mensa with id {canteen_id}.")
     date = datetime.now()
     datestr = date.strftime("%A")
     offset = days_to_sunday[datestr]
@@ -99,8 +106,16 @@ def download_week(canteen_id:int, filename:str):
             menue_week[curr_date.strftime("%A")] = {"ahhhh":"Nichts gefunden"}
             log.error(f"request for {curr_date}  in download_thm_week failed. status code: {response.status_code}")
             continue
-        data = response.json()
-        if data is None:
+        try:
+            log.info(f"try reading response json")
+            data = response.json()
+            if data is None:
+                menue_cache = "Hochschulmensa hat zu 💩"
+                menue_week[curr_date.strftime("%A")] = {"ahhh":"Hochschulmensa hat zu 💩"}
+                continue
+        except:
+            log.error(f"error reading reponse json - writing no menue to cache")
+            menue_cache = "Hochschulmensa hat zu 💩"
             menue_week[curr_date.strftime("%A")] = {"ahhh":"Hochschulmensa hat zu 💩"}
             continue
         #parse over the menue of the current day
@@ -264,7 +279,7 @@ def main():
 
 if __name__ == '__main__':
     log = logging.getLogger("marcel_davis")
-    log.addHandler(JournalHandler())
+#    log.addHandler(JournalHandler())
     log.setLevel(logging.INFO)
     # logging.basicConfig(level=logging.INFO)
     log.info("starting bot")
