@@ -211,6 +211,41 @@ async def abo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             abofile.write("%s\n" % abo)
 
 
+async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    request_date = update.message.text[6:] if update.message.text != "/date" else "No date sent"
+    log.info(f"menue requested for: {request_date}")
+    # TODO: check date for correct format
+    # request menue from open mensa api
+    url=f"https://openmensa.org/api/v2/canteens/{CANTEEN_ID_THM}/days/{request_date}/meals"
+    response = requests.get(url)
+
+    menue_cache = ""
+    read_menue:bool = True
+    if response.status_code != 200:
+        menue_cache = "Nichts gefunden"
+        log.error(f"request for [mensa today] failed. status code: {response.status_code}")
+        read_menue = False
+    try:
+        log.info(f"try reading response json")
+        data = response.json()
+        if data is None:
+            menue_cache = "Hochschulmensa hat zu 💩"
+            read_menue = False
+    except:
+        log.error(f"error reading reponse json - writing no menue to cache")
+        menue_cache = "Hochschulmensa hat zu 💩"
+        read_menue = False
+    # parse mensa menue only if valid data was sent
+    if read_menue:
+        today_menues = parse_menue(data)
+        chache_datestr = datetime.now().strftime("%A")
+        cache_date = datetime.now().strftime('%d.%m.%Y')
+        menue_cache = f"{weekday_dict[chache_datestr]} {cache_date}\n\n"
+        for menue in today_menues:
+            menue_cache += f"{menue}\n{today_menues[menue]}\n\n"
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
+
+
 def send_all_abos():
     bot = Bot(token=API_KEY)
     all_abos = []
@@ -260,6 +295,7 @@ async def set_commands(application):
         ("mensa", "Mensamenü des Tages"),
         ("thm_week", "Mensamenü der Woche"),
         ("uni_week", "Unimensamenu der Woche"),
+        ("date", "Mensa Menü an bestimmten Datum")
         ("abo", "(De)Abboniere den Täglichen Mensareport")
     ])
     return
@@ -286,6 +322,9 @@ def main():
     uni_week_handler = CommandHandler('uni_week', uni_week)
     application.add_handler(uni_week_handler)
 
+    date_handler = CommandHandler('date', date)
+    application.add_handler(date_handler)
+
     log.info("caching all menues")
     cache_all_menus()
     log.info("creating abos")
@@ -299,12 +338,4 @@ def main():
     application.run_polling(poll_interval=2) # poll every 2 sec. default is .5 secs
 
 if __name__ == '__main__':
-    log = logging.getLogger("marcel_davis")
-#    log.addHandler(JournalHandler())
-    log.setLevel(logging.INFO)
-    # logging.basicConfig(level=logging.INFO)
-    log.info("starting bot")
-    cache_all_menus()
-    create_abos()
-    log.info("running mainloop")
     main()
