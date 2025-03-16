@@ -1,0 +1,65 @@
+{   
+    "today": {
+        "last_update": "1970-01-01 00:00:00",
+        "day":{
+        }
+    },
+    "thm_week":{
+        "von": "1970-01-01",
+        "bis": "1970-01-01",
+        "Montag": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        },
+        "Dienstag": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        },
+        "Mittwoch": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        },
+        "Donnerstag": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        },
+        "Freitag": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        }
+    },
+    "uni_week":{
+        "von": "1970-01-01",
+        "bis": "1970-01-01",
+        "Montag": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        },
+        "Dienstag": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        },
+        "Mittwoch": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        },
+        "Donnerstag": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        },
+        "Freitag": {
+            "last_update": "1970-01-01 00:00:00",
+            "day":{
+            }
+        }
+    }
+}

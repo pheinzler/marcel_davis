@@ -7,7 +7,8 @@ WORKDIR /app
 # Copy the required files to the image
 COPY .env .
 COPY config.yaml .
-COPY cache.json .
+COPY template.json .
+COPY menue.py .
 COPY marcel_davis.py .
 COPY requirements.txt .
 

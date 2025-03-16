@@ -10,6 +10,10 @@ from telegram import Update, Bot
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 from pathlib import Path
 import re
+import json
+from menue import Menue
+import shutil
+import os
 from apscheduler.schedulers.background import BackgroundScheduler
 
 logging.basicConfig(
@@ -25,9 +29,10 @@ with open('config.yaml', 'r') as file:
 TIMEOUT = conf["timeout"]
 
 THM_WEEK_FILENAME = conf["filename"]["thm_week"]
-THM_FILENAME = conf["filename"]["thm"]
 UNIMA_WEEK_FILENAME = conf["filename"]["uma_week"]
 ABO_FILENAME = conf["filename"]["abo"]
+CACHE_FILENAME = conf["filename"]["cache"]
+CACHE_TEMPLATE = conf["filename"]["cache_template"]
 
 CANTEEN_ID_THM = conf["canteens"]["thm"]
 CANTEEN_ID_UMA = conf["canteens"]["uma"]
@@ -40,6 +45,15 @@ API_KEY = os.getenv("API_KEY")
 days_to_sunday = {"Monday" : -1, "Tuesday" : -2, "Wednesday" : -3, "Thursday" : -4, "Friday" : -5, "Saturday" : 1, "Sunday" : 0}
 weekday_dict = {"Monday" : "Montag", "Tuesday" : "Dienstag", "Wednesday" : "Mittwoch", "Thursday" : "Donnerstag", "Friday" : "Freitag", "Saturday" : "Samstag", "Sunday" : "Sonntag"}
 
+def set_up_cache():
+# Check if cache.json exists
+    if not os.path.exists(CACHE_FILENAME):
+        # If it does not exist, copy template.json to cache.json
+        shutil.copy(CACHE_TEMPLATE, CACHE_FILENAME)
+        log.info(f"{CACHE_FILENAME} has been created by copying {CACHE_TEMPLATE}.")
+    else:
+        print(f"{CACHE_FILENAME} already exists.")
+
 def parse_menue(data)->dict:
     """parse the json menue of a single day"""
     menues = {}
@@ -49,44 +63,35 @@ def parse_menue(data)->dict:
         menues[data[i]['category']] = menue
     return menues
 
-
 def download_thm():
-    """cache the mensa menue of today and write to .txt file"""
-    log.info("caching mensa menue of thm for today")
-    # Get the current date and format as yyyy-mm-dd
-    date:datetime = datetime.now()
-    date = date.strftime('%Y-%m-%d')
-
-    # request menue from open mensa api
-    url=f"https://openmensa.org/api/v2/canteens/{CANTEEN_ID_THM}/days/{date}/meals"
+    with open(CACHE_FILENAME, 'r') as file:
+        cache = json.load(file)  # Load the JSON data
+    # Get the current date and time
+    current_datetime = datetime.now()
+    request_date = current_datetime.strftime('%Y-%m-%d')
+    # Format the date and time as YYYY-MM-DD HH:MM:SS
+    formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+    url=f"https://openmensa.org/api/v2/canteens/{CANTEEN_ID_THM}/days/{request_date}/meals"
+    log.info(f"fetch data...: request: {url}")
     response = requests.get(url)
-
-    menue_cache = ""
-    read_menue:bool = True
-    if response.status_code != 200:
-        menue_cache = "Nichts gefunden"
-        log.error(f"request for [mensa today] failed. status code: {response.status_code}")
-        read_menue = False
-    try:
-        log.info(f"try reading response json")
-        data = response.json()
-        if data is None:
-            menue_cache = "Hochschulmensa hat zu 💩"
-            read_menue = False
-    except:
-        log.error(f"error reading reponse json - writing no menue to cache")
-        menue_cache = "Hochschulmensa hat zu 💩"
-        read_menue = False
-    # parse mensa menue only if valid data was sent
-    if read_menue:
-        today_menues = parse_menue(data)
-        chache_datestr = datetime.now().strftime("%A")
-        cache_date = datetime.now().strftime('%d.%m.%Y')
-        menue_cache = f"{weekday_dict[chache_datestr]} {cache_date}\n\n"
-        for menue in today_menues:
-            menue_cache += f"{menue}\n{today_menues[menue]}\n\n"
-    with open(THM_FILENAME, 'w', encoding='utf-8') as file:
-        file.write(menue_cache)
+    # reset cache menue
+    cache["today"]["day"]= {}
+    if response.status_code == 200:
+        try:
+            for ele in response.json():
+                menue = Menue(ele)
+                cache["today"]["day"][menue.categorie] = menue.get()
+        except:
+                cache["today"]["day"]["no menue"] = "Hochschulmensa hat zu 💩"
+    else:
+        log.error(f"request for mensa at date {request_date} failed. status code: {response.status_code}")
+        cache["today"]["day"]["no menue"] = "Hochschulmensa hat zu 💩"
+    
+    cache["today"]["status"] = response.status_code
+    cache["today"]["last_update"] = formatted_datetime
+    log.info("write to cache")
+    with open(CACHE_FILENAME, 'w') as file:
+        json.dump(cache, file, indent=4)
 
 
 def download_week(canteen_id:int, filename:str):
@@ -164,10 +169,14 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def mensa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """return todays mensa menu"""
-    log.info("mensa was called")
-    # Open the file and read its contents
-    with open(THM_FILENAME, 'r') as file:
-        menue_cache = file.read()
+    with open(CACHE_FILENAME, 'r') as file:
+        cache = json.load(file)
+    menues = cache["today"]["day"]
+    chache_datestr = datetime.now().strftime("%A")
+    cache_date = datetime.now().strftime('%d.%m.%Y')
+    menue_cache = f"{weekday_dict[chache_datestr]} {cache_date}\n\n"
+    for menue in menues:
+        menue_cache += f"{menue}\n{menues[menue]}\n\n"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
 
 
@@ -303,10 +312,11 @@ async def set_commands(application):
         ("mensa", "Mensamenü des Tages"),
         ("thm_week", "Mensamenü der Woche"),
         ("uni_week", "Unimensamenu der Woche"),
-        ("date", "Mensa Menü an bestimmten Datum")
+        ("date", "Mensa Menü an bestimmten Datum"),
         ("abo", "(De)Abboniere den Täglichen Mensareport")
     ])
     return
+
 
 def main():
     log.info("starting bot")
@@ -333,6 +343,8 @@ def main():
     date_handler = CommandHandler('date', date)
     application.add_handler(date_handler)
 
+    log.info("setup cache")
+    set_up_cache()
     log.info("caching all menues")
     cache_all_menus()
     log.info("creating abos")

@@ -8,6 +8,7 @@ thm_menu.txt
 abos.txt
 cache.json
 notes.md
+simple_tests.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

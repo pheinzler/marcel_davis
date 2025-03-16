@@ -4,9 +4,10 @@ canteens:
 timeout: 5
 filename:
   thm_week: "thm_week_menu.txt"
-  thm: "thm_menu.txt"
   uma_week: "unima_week_menu.txt"
   abo: "abos.txt"
+  cache: "cache.json"
+  cache_template: "template.json"
 messages:
   start: "Willkommen beim inoffiziellen Mensabot"
   help: "/mensa - heutiges Mensa Menü an der Hochschule\n/thm_week - Mensa Menü an der Hochschule für diese Woche\n/uni_week - Mensa Menü an der Uni für diese Woche\n/date <YYYY>-<MM><DD> - Mensamenü für das angefragte Datum\n/abo - (de)abboniere den Mensa bot um täglich das Mensamenü der THM zu bekommen"
