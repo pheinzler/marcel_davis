@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from telegram import Update, Bot
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 from pathlib import Path
-
+import re
 from apscheduler.schedulers.background import BackgroundScheduler
 
 logging.basicConfig(
@@ -215,6 +215,14 @@ async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     request_date = update.message.text[6:] if update.message.text != "/date" else "No date sent"
     log.info(f"menue requested for: {request_date}")
     # TODO: check date for correct format
+    # Define the regex pattern for YYYY-MM-DD
+    pattern = r'^\d{4}-\d{2}-\d{2}$'
+    # Check if the date_string matches the pattern
+    if not re.match(pattern, request_date):
+        log.warning(f"wrong date format")
+        response_message =conf["messages"]["wrong_date"]
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=response_message)
+        return
     # request menue from open mensa api
     url=f"https://openmensa.org/api/v2/canteens/{CANTEEN_ID_THM}/days/{request_date}/meals"
     response = requests.get(url)
