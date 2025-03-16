@@ -6,6 +6,7 @@ thm_week_menu.txt
 unima_week_menu.txt
 thm_menu.txt
 abos.txt
+cache.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
