@@ -4,14 +4,15 @@ FROM python:3.12-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements.txt file into the container and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy additional required files into the container at /app
+# Copy the required files to the image
 COPY .env .
 COPY config.yaml .
+COPY cache.json .
 COPY marcel_davis.py .
+COPY requirements.txt .
+
+# install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Command to run the application
 CMD ["python", "marcel_davis.py"]
