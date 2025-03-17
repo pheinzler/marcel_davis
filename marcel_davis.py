@@ -46,13 +46,14 @@ days_to_sunday = {"Monday" : -1, "Tuesday" : -2, "Wednesday" : -3, "Thursday" : 
 weekday_dict = {"Monday" : "Montag", "Tuesday" : "Dienstag", "Wednesday" : "Mittwoch", "Thursday" : "Donnerstag", "Friday" : "Freitag", "Saturday" : "Samstag", "Sunday" : "Sonntag"}
 
 def set_up_cache():
-# Check if cache.json exists
+    # Check if cache.json exists
     if not os.path.exists(CACHE_FILENAME):
         # If it does not exist, copy template.json to cache.json
         shutil.copy(CACHE_TEMPLATE, CACHE_FILENAME)
         log.info(f"{CACHE_FILENAME} has been created by copying {CACHE_TEMPLATE}.")
     else:
         print(f"{CACHE_FILENAME} already exists.")
+
 
 def get_week_menue(cache_week:dict)->str:
     menue_cache = f"Menue von Montag {cache_week['von']} bis Freitag {cache_week['bis']}\n\n"
@@ -67,7 +68,18 @@ def get_week_menue(cache_week:dict)->str:
     return menue_cache
 
 
+def parse_menue(data)->dict:
+    """parse the json menue of a single day"""
+    menues = {}
+    # loop through json data and return dict of tpye {"menue category":"{meal} - {price}"}
+    for i in range(len(data)):
+        menue = f"{data[i]['name']} - {data[i]['prices']['students']}€"
+        menues[data[i]['category']] = menue
+    return menues
+
+
 def download_thm():
+    log.info(f"caching todays menue for mensa @thm.")
     with open(CACHE_FILENAME, 'r') as file:
         cache = json.load(file)  # Load the JSON data
     # Get the current date and time
@@ -103,7 +115,7 @@ def download_week(canteen_id:int, mensa_key:str):
     # Find start of this weeks menue date and format as yyyy-mm-dd. On weekends get next weeks menue
     with open(CACHE_FILENAME, 'r') as file:
         cache = json.load(file)
-    log.info(f"caching menue for mensa with id {canteen_id}.")
+    log.info(f"caching this weeks menue for mensa with id {canteen_id}.")
     date = datetime.now()
     curr_date_time = date.strftime('%Y-%m-%d %H:%M:%S')
     datestr = date.strftime("%A")
@@ -157,17 +169,20 @@ def cache_all_menus():
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log.info("start was called")
     return_message = conf["messages"]["start"]
     await context.bot.send_message(chat_id=update.effective_chat.id, text=return_message)
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log.info("help was called")
     return_message = conf["messages"]["help"]
     await context.bot.send_message(chat_id=update.effective_chat.id, text=return_message)
 
 
 async def mensa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """return todays mensa menu"""
+    log.info("Mensa was called")
     with open(CACHE_FILENAME, 'r') as file:
         cache = json.load(file)
     menues = cache["today"]["day"]
@@ -224,7 +239,7 @@ async def abo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     request_date = update.message.text[6:] if update.message.text != "/date" else "No date sent"
-    log.info(f"menue requested for: {request_date}")
+    log.info(f"date was called. - requested for: {request_date}")
     # TODO: check date for correct format
     # Define the regex pattern for YYYY-MM-DD
     pattern = r'^\d{4}-\d{2}-\d{2}$'
@@ -242,16 +257,15 @@ async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     read_menue:bool = True
     if response.status_code != 200:
         menue_cache = "Nichts gefunden"
-        log.error(f"request for [mensa today] failed. status code: {response.status_code}")
+        log.error(f"request to OpenMensa failed. status code: {response.status_code} - request message: {update.message.text}")
         read_menue = False
     try:
-        log.info(f"try reading response json")
         data = response.json()
         if data is None:
             menue_cache = "Hochschulmensa hat zu 💩"
             read_menue = False
     except:
-        log.error(f"error reading reponse json - writing no menue to cache")
+        log.error(f"error reading response json, returning default message")
         menue_cache = "Hochschulmensa hat zu 💩"
         read_menue = False
     # parse mensa menue only if valid data was sent
@@ -322,7 +336,7 @@ async def set_commands(application):
 
 
 def main():
-    log.info("starting bot")
+    log.info("Starting bot...")
     application = ApplicationBuilder().token(API_KEY).build()
 
     start_handler = CommandHandler('start', start)
@@ -346,18 +360,18 @@ def main():
     date_handler = CommandHandler('date', date)
     application.add_handler(date_handler)
 
-    log.info("setup cache")
+    log.info("Setup cache")
     set_up_cache()
-    log.info("caching all menues")
+    log.info("Caching menues")
     cache_all_menus()
-    log.info("creating abos")
+    log.info("Creating abos")
     create_abos()
     # Set the bot commands
-    log.info("set commands")
+    log.info("Set commands")
     set_commands(application)
-    log.info("run scheduler")
+    log.info("Set up scheduler")
     run_scheduler()
-    log.info("start polling")
+    log.info("Start polling...")
     application.run_polling(poll_interval=2) # poll every 2 sec. default is .5 secs
 
 if __name__ == '__main__':
