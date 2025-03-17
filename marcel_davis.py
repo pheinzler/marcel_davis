@@ -216,25 +216,27 @@ async def uni_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def abo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    all_abos = []
-    chatid = update.effective_chat.id
-    with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
-        for line in abofile:
-            all_abos.append(line.replace("\n",""))
-    if chatid not in all_abos:
-        all_abos.append(chatid)
-        message = conf["messages"]["abo"]
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-        log.info(f"added chat with chatid {chatid}")
-    else:
-        all_abos.remove(chatid)
-        message = conf["messages"]["deabo"]
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-        log.info(f"removed chat with chatid {chatid}")
+    message = "coming soon"
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+    # all_abos = []
+    # chatid = update.effective_chat.id
+    # with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
+    #     for line in abofile:
+    #         all_abos.append(line.replace("\n",""))
+    # if chatid not in all_abos:
+    #     all_abos.append(chatid)
+    #     message = conf["messages"]["abo"]
+    #     await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+    #     log.info(f"added chat with chatid {chatid}")
+    # else:
+    #     all_abos.remove(chatid)
+    #     message = conf["messages"]["deabo"]
+    #     await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+    #     log.info(f"removed chat with chatid {chatid}")
 
-    with open(ABO_FILENAME, 'w', encoding="utf-8") as abofile:
-        for abo in all_abos:
-            abofile.write("%s\n" % abo)
+    # with open(ABO_FILENAME, 'w', encoding="utf-8") as abofile:
+    #     for abo in all_abos:
+    #         abofile.write("%s\n" % abo)
 
 
 async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
