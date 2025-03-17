@@ -216,7 +216,7 @@ async def uni_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def abo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = "coming soon"
+    message = "coming soon :)"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
     # all_abos = []
     # chatid = update.effective_chat.id
