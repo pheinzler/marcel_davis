@@ -88,7 +88,6 @@ def download_thm():
     # Format the date and time as YYYY-MM-DD HH:MM:SS
     formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
     url=f"https://openmensa.org/api/v2/canteens/{CANTEEN_ID_THM}/days/{request_date}/meals"
-    log.info(f"fetch data...: request: {url}")
     response = requests.get(url)
     # reset cache menue
     cache["today"]["day"]= {}
@@ -113,9 +112,9 @@ def download_thm():
 def download_week(canteen_id:int, mensa_key:str):
     """cache the menue of this week of the canteen with the given id and write to .txt file"""
     # Find start of this weeks menue date and format as yyyy-mm-dd. On weekends get next weeks menue
+    log.info(f"caching this weeks menue for mensa with id {canteen_id}.")
     with open(CACHE_FILENAME, 'r') as file:
         cache = json.load(file)
-    log.info(f"caching this weeks menue for mensa with id {canteen_id}.")
     date = datetime.now()
     curr_date_time = date.strftime('%Y-%m-%d %H:%M:%S')
     datestr = date.strftime("%A")
@@ -189,6 +188,25 @@ async def mensa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chache_datestr = datetime.now().strftime("%A")
     cache_date = datetime.now().strftime('%d.%m.%Y')
     menue_cache = f"{weekday_dict[chache_datestr]} {cache_date}\n\n"
+    for menue in menues:
+        menue_cache += f"{menue}\n{menues[menue]}\n\n"
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
+
+
+async def tomorrow(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log.info("/tomorrow was called")
+    with open(CACHE_FILENAME, 'r') as file:
+        cache = json.load(file)
+    date = datetime.now() + timedelta(1)
+    date_format = date.strftime('%Y-%m-%d')
+    weekday = weekday_dict[date.strftime("%A")]
+    if weekday == "Samstag" or weekday == "Sonntag":
+        log.warning(f"Requested Menue for tomorrow was a weekend - {weekday} :)")
+        message = "Hochschulmensa hat zu 💩"
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+        return
+    menues = cache[THM_WEEK_CACHE_KEY][weekday]["day"]
+    menue_cache = f"{weekday} {date_format}\n\n"
     for menue in menues:
         menue_cache += f"{menue}\n{menues[menue]}\n\n"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
@@ -328,7 +346,6 @@ async def set_commands(application):
         ("help", "Hilfe"),
         ("mensa", "Mensamenü des Tages"),
         ("thm_week", "Mensamenü der Woche"),
-        ("uni_week", "Unimensamenu der Woche"),
         ("date", "Mensa Menü an bestimmten Datum"),
         ("abo", "(De)Abboniere den Täglichen Mensareport")
     ])
@@ -339,7 +356,10 @@ def main():
     log.info("Starting bot...")
     application = ApplicationBuilder().token(API_KEY).build()
 
-    start_handler = CommandHandler('start', start)
+    start_handler = CommandHandler('tomorrow', tomorrow)
+    application.add_handler(tomorrow_handler)
+
+    tomorrow_handler = CommandHandler('start', start)
     application.add_handler(start_handler)
 
     help_handler = CommandHandler('help', help)
@@ -354,8 +374,8 @@ def main():
     thm_week_handler = CommandHandler('thm_week', thm_week)
     application.add_handler(thm_week_handler)
 
-    uni_week_handler = CommandHandler('uni_week', uni_week)
-    application.add_handler(uni_week_handler)
+    # uni_week_handler = CommandHandler('uni_week', uni_week)
+    # application.add_handler(uni_week_handler)
 
     date_handler = CommandHandler('date', date)
     application.add_handler(date_handler)
