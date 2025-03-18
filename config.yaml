@@ -10,7 +10,7 @@ filename:
   cache_template: "template.json"
 messages:
   start: "Willkommen beim inoffiziellen Mensabot"
-  help: "/mensa - heutiges Mensa Menü an der Hochschule\n/tomorrow - Mensa Menü von Morgen\n/thm_week - Mensa Menü an der Hochschule für diese Woche\n/uni_week - Mensa Menü an der Uni für diese Woche\n/date <YYYY>-<MM>-<DD> - Mensamenü für das angefragte Datum\n/abo - (de)abboniere den Mensa bot um täglich das Mensamenü der THM zu bekommen"
+  help: "/mensa - heutiges Mensa Menü an der Hochschule\n/tomorrow - Mensa Menü von Morgen\n/thm_week - Mensa Menü an der Hochschule für diese Woche\n/date <YYYY>-<MM>-<DD> - Mensamenü für das angefragte Datum\n/abo - (de)abboniere den Mensa bot um täglich das Mensamenü der THM zu bekommen"
   abo: "du wirst jetzt täglich Infos zur mensa erhalten"
   deabo: "du wirst jetzt täglich **keine** Infos zur mensa erhalten"
   wrong_date: "Datum im falschen Format - YYYY-MM-DD"
