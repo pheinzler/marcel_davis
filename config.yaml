@@ -1,7 +1,7 @@
 canteens:
   thm: 289
   uma: 285
-timeout: 5
+timeout: 2
 filename:
   thm_week_cache_key: "thm_week"
   uma_week_cache_key: "uni_week"
