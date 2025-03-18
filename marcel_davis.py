@@ -347,6 +347,7 @@ async def set_commands(application):
         ("mensa", "Mensamenü des Tages"),
         ("thm_week", "Mensamenü der Woche"),
         ("date", "Mensa Menü an bestimmten Datum"),
+        ("tomorrow", "Mensa Menür von morgen")
         ("abo", "(De)Abboniere den Täglichen Mensareport")
     ])
     return
@@ -356,11 +357,11 @@ def main():
     log.info("Starting bot...")
     application = ApplicationBuilder().token(API_KEY).build()
 
-    start_handler = CommandHandler('tomorrow', tomorrow)
-    application.add_handler(tomorrow_handler)
-
-    tomorrow_handler = CommandHandler('start', start)
+    start_handler = CommandHandler('start', start)
     application.add_handler(start_handler)
+
+    tomorrow_handler = CommandHandler('tomorrow', tomorrow)
+    application.add_handler(tomorrow_handler)
 
     help_handler = CommandHandler('help', help)
     application.add_handler(help_handler)
