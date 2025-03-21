@@ -342,20 +342,6 @@ def run_scheduler():
     sched.start()
 
 
-async def set_commands(application):
-    # Set the bot commands
-    await application.bot.set_my_commands([
-        ("start", "Start"),
-        ("help", "Hilfe"),
-        ("mensa", "Mensamenü des Tages"),
-        ("thm_week", "Mensamenü der Woche"),
-        ("date", "Mensa Menü an bestimmten Datum"),
-        ("tomorrow", "Mensa Menür von morgen")
-        ("abo", "(De)Abboniere den Täglichen Mensareport")
-    ])
-    return
-
-
 def main():
     log.info("Starting bot...")
     application = ApplicationBuilder().token(API_KEY).build()
@@ -390,9 +376,6 @@ def main():
     cache_all_menus()
     log.info("Creating abos")
     create_abos()
-    # Set the bot commands
-    log.info("Set commands")
-    #set_commands(application)
     log.info("Set up scheduler")
     run_scheduler()
     log.info("Start polling...")
