@@ -8,6 +8,7 @@ import time
 from dotenv import load_dotenv
 from telegram import Update, Bot
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
+from telegram.error import TelegramError
 from pathlib import Path
 import re
 import json
@@ -257,7 +258,6 @@ async def abo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     request_date = update.message.text[6:] if update.message.text != "/date" else "No date sent"
     log.info(f"date was called. - requested for: {request_date}")
-    # TODO: check date for correct format
     # Define the regex pattern for YYYY-MM-DD
     pattern = r'^\d{4}-\d{2}-\d{2}$'
     # Check if the date_string matches the pattern
@@ -295,18 +295,24 @@ async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def send_all_abos():
-    None
-#     bot = Bot(token=API_KEY)
-#     all_abos = []
-#     with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
-#         for line in abofile:
-#             all_abos.append(line)
-#     log.info(f"sending abos. currently there are {len(all_abos)} abos")
-#     with open(THM_FILENAME, 'r', encoding="utf-8") as file:
-#         menu = file.read()
-#         if len(all_abos) > 0:
-#             for chat_id in all_abos:
-#                 bot.send_message(chat_id=chat_id, text=menu)
+    log.info("sending menu to abo chats")
+    bot = Bot(token=API_KEY)
+    with open(ABO_FILENAME, 'r') as file:
+        chat_ids:list = json.load(file)
+    log.info(f"sending abos. currently there are {len(chat_ids)} abos")
+    with open(CACHE_FILENAME, 'r') as file:
+        cache = json.load(file)
+    menues = cache["today"]["day"]
+    chache_datestr = datetime.now().strftime("%A")
+    cache_date = datetime.now().strftime('%d.%m.%Y')
+    menue_cache = f"{weekday_dict[chache_datestr]} {cache_date}\n\n"
+    for menue in menues:
+        menue_cache += f"{menue}\n{menues[menue]}\n\n"
+    for cid in chat_ids:
+        try:
+            bot.send_message(chat_id=cid, text=menue_cache)
+        except TelegramError as e:
+                print(f"Failed to send message to chat ID {cid}: {e}")
 
 
 def run_scheduler():
