@@ -1,14 +1,7 @@
 #custom
-tgbot_config.py
-marceldavis/
-marcel_davis/
-thm_week_menu.txt
-unima_week_menu.txt
-thm_menu.txt
-abos.txt
-cache.json
 notes.md
 simple_tests.py
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

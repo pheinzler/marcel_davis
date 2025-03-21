@@ -1,5 +1,10 @@
 services:
   marcel-davis:
-    image: marcel-davis:0.9
+    image: marcel-davis:latest
     container_name: marcel-davis
     restart: unless-stopped
+    volumes:
+      - app_data:/app/data
+
+volumes:
+  app_data:
