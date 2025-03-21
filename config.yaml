@@ -5,8 +5,8 @@ timeout: 2
 filename:
   thm_week_cache_key: "thm_week"
   uma_week_cache_key: "uni_week"
-  abo: "abos.txt"
-  cache: "cache.json"
+  abo: "data/ids.json"
+  cache: "data/cache.json"
   cache_template: "template.json"
 messages:
   start: "Willkommen beim inoffiziellen Mensabot"

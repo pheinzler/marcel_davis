@@ -52,7 +52,7 @@ def set_up_cache():
         shutil.copy(CACHE_TEMPLATE, CACHE_FILENAME)
         log.info(f"{CACHE_FILENAME} has been created by copying {CACHE_TEMPLATE}.")
     else:
-        print(f"{CACHE_FILENAME} already exists.")
+        log.info(f"{CACHE_FILENAME} already exists, skipping creation")
 
 
 def get_week_menue(cache_week:dict)->str:
@@ -234,27 +234,24 @@ async def uni_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def abo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = "coming soon :)"
+    log.info("/abo was called")
+    requesting_id=update.effective_chat.id
+    with open(ABO_FILENAME, 'r') as file:
+        chat_ids:list = json.load(file)
+    message = ""
+    if requesting_id in chat_ids:
+        log.info(f"{requesting_id} already in abos, removing file")
+        chat_ids.remove((requesting_id))
+        message = conf["messages"]["deabo"]
+    else:
+        log.info(f"{requesting_id} not in abo ids. Adding id")
+        chat_ids.append(requesting_id)
+        message = conf["messages"]["abo"]
     await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-    # all_abos = []
-    # chatid = update.effective_chat.id
-    # with open(ABO_FILENAME, 'r', encoding="utf-8") as abofile:
-    #     for line in abofile:
-    #         all_abos.append(line.replace("\n",""))
-    # if chatid not in all_abos:
-    #     all_abos.append(chatid)
-    #     message = conf["messages"]["abo"]
-    #     await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-    #     log.info(f"added chat with chatid {chatid}")
-    # else:
-    #     all_abos.remove(chatid)
-    #     message = conf["messages"]["deabo"]
-    #     await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-    #     log.info(f"removed chat with chatid {chatid}")
 
-    # with open(ABO_FILENAME, 'w', encoding="utf-8") as abofile:
-    #     for abo in all_abos:
-    #         abofile.write("%s\n" % abo)
+    log.info("storing updated abo file.")
+    with open(ABO_FILENAME, 'w') as file:
+        json.dump(chat_ids, file)
 
 
 async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -389,7 +386,7 @@ def main():
     create_abos()
     # Set the bot commands
     log.info("Set commands")
-    set_commands(application)
+    #set_commands(application)
     log.info("Set up scheduler")
     run_scheduler()
     log.info("Start polling...")
