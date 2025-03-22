@@ -1,6 +1,6 @@
 services:
   marcel-davis:
-    image: marcel-davis:latest
+    image: marcel_davis:latest
     container_name: marcel-davis
     restart: unless-stopped
     volumes:
