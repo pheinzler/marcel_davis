@@ -24,7 +24,7 @@ logging.basicConfig(
 log = logging.getLogger("marcel-davis")
 
 #open yaml config and get config data
-with open('config.yaml', 'r') as file:
+with open('./../conf/config.yaml', 'r') as file:
     conf = yaml.safe_load(file)
 
 TIMEOUT = conf["timeout"]
@@ -161,8 +161,7 @@ def create_abos():
 
 
 def cache_all_menus():
-    "caches all menus as files"
-    log.info("caching menus")
+    "caches all menus in data/cache.json"
     download_thm()
     download_week(CANTEEN_ID_THM, THM_WEEK_CACHE_KEY)
     download_week(CANTEEN_ID_UMA, UNIMA_WEEK_CACHE_KEY)

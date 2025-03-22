@@ -5,9 +5,9 @@ timeout: 2
 filename:
   thm_week_cache_key: "thm_week"
   uma_week_cache_key: "uni_week"
-  abo: "data/ids.json"
-  cache: "data/cache.json"
-  cache_template: "template.json"
+  abo: "./../data/ids.json"
+  cache: "./../data/cache.json"
+  cache_template: "./../template.json"
 messages:
   start: "Willkommen beim inoffiziellen Mensabot"
   help: "/mensa - heutiges Mensa Menü an der Hochschule\n/tomorrow - Mensa Menü von Morgen\n/thm_week - Mensa Menü an der Hochschule für diese Woche\n/date <YYYY>-<MM>-<DD> - Mensamenü für das angefragte Datum\n/abo - (de)abboniere den Mensa bot um täglich das Mensamenü der THM zu bekommen"
