@@ -38,6 +38,7 @@ CACHE_TEMPLATE = conf["filename"]["cache_template"]
 CANTEEN_ID_THM = conf["canteens"]["thm"]
 CANTEEN_ID_UMA = conf["canteens"]["uma"]
 
+STATISTICS = conf["statistics"]
 # get token and initialize bot
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -62,7 +63,7 @@ def get_week_menue(cache_week:dict)->str:
         for day in weekday_dict.values():
             menue_cache += f"{day} - {cache_week[day]['date']}\n"
             for menue in cache_week[day]['day']:
-                menue_cache += f"- {menue}\n\t\t{cache_week[day]['day'][menue]}\n\n"
+                menue_cache += f"- {menue}\n\t\t{cache_week[day]['day'][menue]} - {cache_week[day]['day'][menue]['price']}{cache_week[day]['day'][menue]['price_unit']}\n\n"
             menue_cache += "\n"
     except:
         None
@@ -97,8 +98,10 @@ def download_thm():
             for ele in response.json():
                 menue = Menue(ele)
                 cache["today"]["day"][menue.categorie] = menue.get()
+                cache["today"]["day"]["price"] = float(menue.price)
+                cache["today"]["day"]["price_unit"] = menue.price_unit
         except:
-                cache["today"]["day"]["no menue"] = "Hochschulmensa hat zu 💩"
+                cache["today"]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
     else:
         log.error(f"request for mensa at date {request_date} failed. status code: {response.status_code}")
         cache["today"]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
@@ -137,6 +140,8 @@ def download_week(canteen_id:int, mensa_key:str):
                 for ele in response.json():
                     menue = Menue(ele)
                     cache[mensa_key][weekday]["day"][menue.categorie] = menue.get()
+                    cache[mensa_key][weekday]["day"]["price"] = float(menue.price)
+                    cache[mensa_key][weekday]["day"]["price_unit"] = menue.price_unit
                     cache[mensa_key][weekday]["status"] = response.status_code
                     cache[mensa_key][weekday]["date"] = curr_date_request_fromat
             except:
@@ -189,7 +194,7 @@ async def mensa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cache_date = datetime.now().strftime('%d.%m.%Y')
     menue_cache = f"{weekday_dict[chache_datestr]} {cache_date}\n\n"
     for menue in menues:
-        menue_cache += f"{menue}\n{menues[menue]}\n\n"
+        menue_cache += f"{menue}\n{menues[menue]} - {menues[menue]["price"]}{menues[menue]["price_unit"]}\n\n"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
 
 
