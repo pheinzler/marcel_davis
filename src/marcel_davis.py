@@ -168,11 +168,6 @@ def download_week(canteen_id:int, mensa_key:str):
             json.dump(cache, file, indent=4)
 
 
-def create_abos():
-    abos = Path(ABO_FILENAME)
-    abos.touch(exist_ok=True)
-
-
 def cache_all_menus():
     "caches all menus in data/cache.json"
     download_thm()
@@ -386,8 +381,6 @@ def main():
     set_up_cache()
     log.info("Caching menues")
     cache_all_menus()
-    log.info("Creating abos")
-    create_abos()
     log.info("Set up scheduler")
     run_scheduler()
     log.info("Start polling...")
