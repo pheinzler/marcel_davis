@@ -102,9 +102,13 @@ def download_thm():
                 cache["today"]["day"]["price_unit"] = menue.price_unit
         except:
                 cache["today"]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
+                cache["today"]["day"]["price"] = 0.0
+                cache["today"]["day"]["price_unit"] = "€"
     else:
         log.error(f"request for mensa at date {request_date} failed. status code: {response.status_code}")
         cache["today"]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
+        cache["today"]["day"]["price"] = 0.0
+        cache["today"]["day"]["price_unit"] = "€"
     
     cache["today"]["status"] = response.status_code
     cache["today"]["last_update"] = formatted_datetime
@@ -145,12 +149,16 @@ def download_week(canteen_id:int, mensa_key:str):
                     cache[mensa_key][weekday]["status"] = response.status_code
                     cache[mensa_key][weekday]["date"] = curr_date_request_fromat
             except:
-                    cache[mensa_key][weekday]["day"]["no menue"] = "Hochschulmensa hat zu 💩"
+                    cache[mensa_key][weekday]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
+                    cache[mensa_key][weekday]["day"]["price"] = 0.0
+                    cache[mensa_key][weekday]["day"]["price_unit"] = "€"
                     cache[mensa_key][weekday]["status"] = response.status_code
                     cache[mensa_key][weekday]["date"] = curr_date_request_fromat
         else:
             log.error(f"request for mensa at date {curr_date_request_fromat} failed. status code: {response.status_code}")
             cache[mensa_key][weekday]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
+            cache[mensa_key][weekday]["day"]["price"] = 0.0
+            cache[mensa_key][weekday]["day"]["price_unit"] = "€"
             cache[mensa_key][weekday]["status"] = response.status_code
             cache[mensa_key][weekday]["date"] = curr_date_request_fromat
         cache[mensa_key][weekday]["last_update"] = curr_date_time
