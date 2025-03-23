@@ -16,6 +16,7 @@ from menue import Menue
 import shutil
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
+from stats import Stats
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -23,7 +24,11 @@ logging.basicConfig(
 )
 log = logging.getLogger("marcel-davis")
 
-#open yaml config and get config data
+#load secrets
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
+
+#load config
 with open('./../conf/config.yaml', 'r') as file:
     conf = yaml.safe_load(file)
 
@@ -39,9 +44,8 @@ CANTEEN_ID_THM = conf["canteens"]["thm"]
 CANTEEN_ID_UMA = conf["canteens"]["uma"]
 
 STATISTICS = conf["statistics"]
-# get token and initialize bot
-load_dotenv()
-API_KEY = os.getenv("API_KEY")
+
+stats = Stats(STATISTICS)
 
 #this dict is used to download the week menues. For workdays it calculates back to the start of the current week. for weekend days it forwards to the next weeks menue
 days_to_sunday = {"Monday" : -1, "Tuesday" : -2, "Wednesday" : -3, "Thursday" : -4, "Friday" : -5, "Saturday" : 1, "Sunday" : 0}
@@ -102,13 +106,9 @@ def download_thm():
                 cache["today"]["day"]["price_unit"] = menue.price_unit
         except:
                 cache["today"]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
-                cache["today"]["day"]["price"] = 0.0
-                cache["today"]["day"]["price_unit"] = "€"
     else:
         log.error(f"request for mensa at date {request_date} failed. status code: {response.status_code}")
         cache["today"]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
-        cache["today"]["day"]["price"] = 0.0
-        cache["today"]["day"]["price_unit"] = "€"
     
     cache["today"]["status"] = response.status_code
     cache["today"]["last_update"] = formatted_datetime
@@ -149,16 +149,12 @@ def download_week(canteen_id:int, mensa_key:str):
                     cache[mensa_key][weekday]["status"] = response.status_code
                     cache[mensa_key][weekday]["date"] = curr_date_request_fromat
             except:
-                    cache[mensa_key][weekday]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
-                    cache[mensa_key][weekday]["day"]["price"] = 0.0
-                    cache[mensa_key][weekday]["day"]["price_unit"] = "€"
+                    cache[mensa_key][weekday]["day"]["no menue"] = "Hochschulmensa hat zu 💩"
                     cache[mensa_key][weekday]["status"] = response.status_code
                     cache[mensa_key][weekday]["date"] = curr_date_request_fromat
         else:
             log.error(f"request for mensa at date {curr_date_request_fromat} failed. status code: {response.status_code}")
             cache[mensa_key][weekday]["day"]["No Menu"] = "Hochschulmensa hat zu 💩"
-            cache[mensa_key][weekday]["day"]["price"] = 0.0
-            cache[mensa_key][weekday]["day"]["price_unit"] = "€"
             cache[mensa_key][weekday]["status"] = response.status_code
             cache[mensa_key][weekday]["date"] = curr_date_request_fromat
         cache[mensa_key][weekday]["last_update"] = curr_date_time
@@ -168,6 +164,11 @@ def download_week(canteen_id:int, mensa_key:str):
             json.dump(cache, file, indent=4)
 
 
+def create_abos():
+    abos = Path(ABO_FILENAME)
+    abos.touch(exist_ok=True)
+
+
 def cache_all_menus():
     "caches all menus in data/cache.json"
     download_thm()
@@ -175,16 +176,52 @@ def cache_all_menus():
     download_week(CANTEEN_ID_UMA, UNIMA_WEEK_CACHE_KEY)
 
 
+def send_all_abos():
+    log.info("sending menu to abo chats")
+    bot = Bot(token=API_KEY)
+    with open(ABO_FILENAME, 'r') as file:
+        chat_ids:list = json.load(file)
+    log.info(f"sending abos. currently there are {len(chat_ids)} abos")
+    with open(CACHE_FILENAME, 'r') as file:
+        cache = json.load(file)
+    menues = cache["today"]["day"]
+    chache_datestr = datetime.now().strftime("%A")
+    cache_date = datetime.now().strftime('%d.%m.%Y')
+    menue_cache = f"{weekday_dict[chache_datestr]} {cache_date}\n\n"
+    for menue in menues:
+        menue_cache += f"{menue}\n{menues[menue]}\n\n"
+    for cid in chat_ids:
+        try:
+            bot.send_message(chat_id=cid, text=menue_cache)
+        except TelegramError as e:
+            print(f"Failed to send message to chat ID {cid}: {e}")
+
+
+def send_menue_stats():
+    """send menue and prices to influx db"""
+    log.info("Send todays menue and its data to influx")
+    with open(CACHE_FILENAME, 'r') as file:
+        cache = json.load(file)
+    menues = cache["today"]
+    stats.send_menue(menues)
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log.info("start was called")
     return_message = conf["messages"]["start"]
     await context.bot.send_message(chat_id=update.effective_chat.id, text=return_message)
+    # if set, send statistics
+    log.info(f"send statsitics? - {STATISTICS}")
+    stats.send_handler("start")
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log.info("help was called")
     return_message = conf["messages"]["help"]
     await context.bot.send_message(chat_id=update.effective_chat.id, text=return_message)
+    # if set, send statistics
+    log.info(f"send statsitics? - {STATISTICS}")
+    stats.send_handler("help")
 
 
 async def mensa(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -199,6 +236,9 @@ async def mensa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for menue in menues:
         menue_cache += f"{menue}\n{menues[menue]} - {menues[menue]["price"]}{menues[menue]["price_unit"]}\n\n"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
+    # if set, send statistics
+    log.info(f"send statsitics? - {STATISTICS}")
+    stats.send_handler("mensa")
 
 
 async def tomorrow(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -218,6 +258,9 @@ async def tomorrow(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for menue in menues:
         menue_cache += f"{menue}\n{menues[menue]}\n\n"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
+    # if set, send statistics
+    log.info(f"send statsitics? - {STATISTICS}")
+    stats.send_handler("tomorrow")
 
 
 async def thm_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -228,6 +271,12 @@ async def thm_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cache = json.load(file)
     menue_cache:str = get_week_menue(cache[THM_WEEK_CACHE_KEY])
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
+    # if set, send statistics
+    log.info(f"send statsitics? - {STATISTICS}")
+    stats.send_handler("thm_week")
+    # if set, send statistics
+    log.info(f"send statsitics? - {STATISTICS}")
+    stats.send_handler("thm_week")
 
 
 async def uni_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -239,6 +288,9 @@ async def uni_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # menue_cache = get_week_menue(cache[UNIMA_WEEK_CACHE_KEY])
     menue_cache = "work in progress. Upadte coming - soon... maybe :)"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
+    # if set, send statistics
+    log.info(f"send statsitics? - {STATISTICS}")
+    stats.send_handler("uni_week")
 
 
 async def abo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -260,6 +312,9 @@ async def abo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log.info("storing updated abo file.")
     with open(ABO_FILENAME, 'w') as file:
         json.dump(chat_ids, file)
+    # if set, send statistics
+    log.info(f"send statsitics? - {STATISTICS}")
+    stats.send_handler("abo")
 
 
 async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -299,31 +354,12 @@ async def date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for menue in today_menues:
             menue_cache += f"{menue}\n{today_menues[menue]}\n\n"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=menue_cache)
-
-
-def send_all_abos():
-    log.info("sending menu to abo chats")
-    bot = Bot(token=API_KEY)
-    with open(ABO_FILENAME, 'r') as file:
-        chat_ids:list = json.load(file)
-    log.info(f"sending abos. currently there are {len(chat_ids)} abos")
-    with open(CACHE_FILENAME, 'r') as file:
-        cache = json.load(file)
-    menues = cache["today"]["day"]
-    chache_datestr = datetime.now().strftime("%A")
-    cache_date = datetime.now().strftime('%d.%m.%Y')
-    menue_cache = f"{weekday_dict[chache_datestr]} {cache_date}\n\n"
-    for menue in menues:
-        menue_cache += f"{menue}\n{menues[menue]}\n\n"
-    for cid in chat_ids:
-        try:
-            bot.send_message(chat_id=cid, text=menue_cache)
-        except TelegramError as e:
-                print(f"Failed to send message to chat ID {cid}: {e}")
-
+    # if set, send statistics
+    log.info(f"send statsitics? - {STATISTICS}")
+    stats.send_handler("date")
 
 def run_scheduler():
-    log.info("running scheduler")
+    log.info("starting scheduler")
     sched = BackgroundScheduler()
     sched.configure(timezone='Europe/Rome')
     sched.add_job(
@@ -344,6 +380,16 @@ def run_scheduler():
         day_of_week="0-4",
         hour=9,
         minute=0,
+        second=0
+    )
+    sched.add_job(  #TODO: set correct cron date
+        send_menue_stats,
+        'cron',
+        year="*",
+        month="*",
+        day_of_week="0-4",
+        hour="*",
+        minute="*/30",
         second=0
     )
     sched.start()
@@ -381,10 +427,12 @@ def main():
     set_up_cache()
     log.info("Caching menues")
     cache_all_menus()
+    log.info("Creating abos")
+    create_abos()
     log.info("Set up scheduler")
     run_scheduler()
     log.info("Start polling...")
-    application.run_polling(poll_interval=2) # poll every 2 sec. default is .5 secs
+    application.run_polling(poll_interval=TIMEOUT) # poll every 2 sec. default is .5 secs
 
 if __name__ == '__main__':
     main()

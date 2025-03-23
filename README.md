@@ -4,13 +4,28 @@ Marcel Davis ist der inoffizielle Mensabot der Hochschule Mannheim
 
 ## Setup
 
-Before running the application, the api token needs to be added to the environment. For this an environment file (src/.env) can be used.
+Before running the application, a few secrets need to be added in the form of an environment varible. For this an environment file (./src/.env) can be used.
 
 ```.env
 API_KEY="api-key"
+INFLUX_TOKEN="INFLUX DB TOKEN - if statistics shall be persitet"
+INFLUX_URL="<IP>:<Port>"
 ```
 
-The application can be run either using a virtual environment or deploying as a docker container. 
+### Statistics
+
+It is possible to persist statistics like menue prices or how often a handler is called inside an influxdb. To persist data the following config keys need to be specified inside the ```config.yaml```:
+
+```.yaml
+statistics: true
+influx:
+  org: "influx-org"
+  bucket: "influx-bucket"
+```
+
+## Startup
+
+The application can be run either using a virtual environment or deploying as a docker container.
 
 ### Virtual environment
 
